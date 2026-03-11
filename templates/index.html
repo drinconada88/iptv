@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IPTV Manager</title>
+<style>
+/* ─── Variables Catppuccin Mocha ─────────────────────────────────────────── */
+:root {
+  --base:    #1e1e2e;
+  --mantle:  #181825;
+  --crust:   #11111b;
+  --s0:      #313244;
+  --s1:      #45475a;
+  --s2:      #585b70;
+  --ov0:     #6c7086;
+  --ov1:     #7f849c;
+  --text:    #cdd6f4;
+  --sub1:    #bac2de;
+  --sub0:    #a6adc8;
+  --blue:    #89b4fa;
+  --mauve:   #cba6f7;
+  --green:   #a6e3a1;
+  --yellow:  #f9e2af;
+  --sky:     #89dceb;
+  --red:     #f38ba8;
+  --peach:   #fab387;
+  --teal:    #94e2d5;
+  --lavender:#b4befe;
+  --sidebar: 230px;
+  --header:  58px;
+  --row-h:   40px;
+  --radius:  8px;
+}
+
+/* ─── Reset & base ───────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--base); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; }
+a { color: inherit; text-decoration: none; }
+button { cursor: pointer; border: none; outline: none; }
+input, select, textarea { outline: none; font-family: inherit; font-size: 14px; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--mantle); }
+::-webkit-scrollbar-thumb { background: var(--s1); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--s2); }
+
+/* ─── Layout ─────────────────────────────────────────────────────────────── */
+#app { display: grid; grid-template-rows: var(--header) 1fr; grid-template-columns: var(--sidebar) 1fr; height: 100vh; overflow: hidden; }
+
+/* ─── Header ─────────────────────────────────────────────────────────────── */
+#header {
+  grid-column: 1 / -1;
+  background: var(--mantle);
+  border-bottom: 1px solid var(--s0);
+  display: flex; align-items: center; gap: 16px;
+  padding: 0 20px;
+}
+#header .logo { display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 700; color: var(--blue); letter-spacing: .5px; }
+#header .logo svg { width: 22px; height: 22px; }
+#header .sep { width: 1px; height: 26px; background: var(--s0); }
+
+.badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;
+  letter-spacing: .3px;
+}
+.badge-main     { background: rgba(166,227,161,.15); color: var(--green); }
+.badge-backup   { background: rgba(137,180,250,.15); color: var(--blue); }
+.badge-test     { background: rgba(249,226,175,.15); color: var(--yellow); }
+.badge-disabled { background: rgba(108,112,134,.15); color: var(--ov1); }
+.badge-total    { background: rgba(180,190,254,.15); color: var(--lavender); }
+
+.header-actions { margin-left: auto; display: flex; gap: 8px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: var(--radius);
+  font-size: 13px; font-weight: 600; transition: all .15s;
+}
+.btn-primary   { background: var(--blue);  color: var(--crust); }
+.btn-primary:hover { background: var(--lavender); }
+.btn-secondary { background: var(--s0); color: var(--text); }
+.btn-secondary:hover { background: var(--s1); }
+.btn-ghost { background: transparent; color: var(--sub0); border: 1px solid var(--s1); }
+.btn-ghost:hover { background: var(--s0); color: var(--text); }
+.btn-danger { background: rgba(243,139,168,.15); color: var(--red); border: 1px solid rgba(243,139,168,.3); }
+.btn-danger:hover { background: rgba(243,139,168,.25); }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+.btn svg { width: 15px; height: 15px; }
+
+/* ─── Sidebar ────────────────────────────────────────────────────────────── */
+#sidebar {
+  background: var(--mantle);
+  border-right: 1px solid var(--s0);
+  overflow-y: auto;
+  padding: 12px 8px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.sidebar-title { font-size: 11px; font-weight: 700; color: var(--ov1); letter-spacing: 1.2px; padding: 4px 8px 8px; text-transform: uppercase; }
+.group-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 10px; border-radius: var(--radius); cursor: pointer;
+  color: var(--sub0); font-size: 13px; transition: all .12s;
+}
+.group-item:hover { background: var(--s0); color: var(--text); }
+.group-item.active { background: rgba(137,180,250,.2); color: var(--blue); font-weight: 600; }
+.group-count { font-size: 11px; background: var(--s1); color: var(--sub0); padding: 1px 6px; border-radius: 10px; min-width: 22px; text-align: center; }
+.group-item.active .group-count { background: rgba(137,180,250,.3); color: var(--blue); }
+
+/* ─── Main ───────────────────────────────────────────────────────────────── */
+#main { display: flex; flex-direction: column; overflow: hidden; }
+
+/* ─── Toolbar ────────────────────────────────────────────────────────────── */
+#toolbar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px;
+  background: var(--base);
+  border-bottom: 1px solid var(--s0);
+  flex-shrink: 0;
+}
+.search-wrap { position: relative; flex: 1; max-width: 340px; }
+.search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--ov0); width: 15px; height: 15px; pointer-events: none; }
+#searchInput {
+  width: 100%; padding: 7px 12px 7px 32px;
+  background: var(--s0); border: 1px solid var(--s1);
+  border-radius: var(--radius); color: var(--text);
+}
+#searchInput:focus { border-color: var(--blue); }
+#searchInput::placeholder { color: var(--ov0); }
+
+#statusFilter {
+  padding: 7px 12px; background: var(--s0); border: 1px solid var(--s1);
+  border-radius: var(--radius); color: var(--text); cursor: pointer; min-width: 120px;
+}
+#statusFilter:focus { border-color: var(--blue); }
+
+.toolbar-sep { flex: 1; }
+#rowCount { font-size: 12px; color: var(--ov1); }
+
+/* ─── Table ──────────────────────────────────────────────────────────────── */
+#table-wrap { flex: 1; overflow: auto; }
+table { width: 100%; border-collapse: collapse; }
+thead th {
+  position: sticky; top: 0; z-index: 5;
+  background: var(--mantle);
+  padding: 10px 12px;
+  text-align: left; font-size: 11px; font-weight: 700;
+  color: var(--ov1); letter-spacing: .8px; text-transform: uppercase;
+  border-bottom: 1px solid var(--s0);
+  white-space: nowrap; cursor: pointer; user-select: none;
+}
+thead th:hover { color: var(--text); }
+thead th .sort-arrow { opacity: .35; margin-left: 4px; }
+thead th.sort-asc .sort-arrow::after  { content: " ▲"; opacity: 1; }
+thead th.sort-desc .sort-arrow::after { content: " ▼"; opacity: 1; }
+
+tbody tr {
+  border-bottom: 1px solid var(--s0);
+  transition: background .1s;
+  height: var(--row-h);
+}
+tbody tr:hover { background: var(--s0); }
+tbody tr.disabled-row { opacity: .45; }
+tbody td { padding: 0 12px; }
+
+/* Status dot */
+.status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; flex-shrink: 0; }
+.dot-main     { background: var(--green); }
+.dot-backup   { background: var(--blue); }
+.dot-test     { background: var(--yellow); }
+.dot-disabled { background: var(--ov0); }
+
+/* Status pill */
+.status-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; letter-spacing: .4px;
+}
+.pill-main     { background: rgba(166,227,161,.15); color: var(--green); }
+.pill-backup   { background: rgba(137,180,250,.15); color: var(--blue); }
+.pill-test     { background: rgba(249,226,175,.15); color: var(--yellow); }
+.pill-disabled { background: rgba(108,112,134,.15); color: var(--ov1); }
+
+.peer-chip {
+  font-family: 'Consolas', monospace; font-size: 12px;
+  background: var(--s0); padding: 2px 7px; border-radius: 4px;
+  color: var(--sky); letter-spacing: .5px;
+}
+
+.row-actions { display: flex; gap: 4px; opacity: 0; transition: opacity .1s; }
+tbody tr:hover .row-actions { opacity: 1; }
+.icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 6px; background: transparent; color: var(--sub0); transition: all .12s; }
+.icon-btn:hover { background: var(--s1); color: var(--text); }
+.icon-btn.danger:hover { background: rgba(243,139,168,.2); color: var(--red); }
+.icon-btn svg { width: 14px; height: 14px; }
+
+/* ─── Modal ──────────────────────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 50;
+  background: rgba(0,0,0,.6); backdrop-filter: blur(3px);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: var(--mantle);
+  border: 1px solid var(--s1);
+  border-radius: 12px;
+  width: 580px; max-width: 95vw; max-height: 90vh; overflow-y: auto;
+  transform: scale(.95); transition: transform .2s;
+}
+.modal-overlay.open .modal { transform: scale(1); }
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 20px; border-bottom: 1px solid var(--s0);
+}
+.modal-title { font-size: 16px; font-weight: 700; color: var(--text); }
+.modal-close { background: transparent; color: var(--ov0); width: 30px; height: 30px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: all .12s; }
+.modal-close:hover { background: var(--s1); color: var(--text); }
+.modal-body { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.modal-footer { padding: 14px 20px; border-top: 1px solid var(--s0); display: flex; justify-content: flex-end; gap: 8px; }
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-group.full { grid-column: 1 / -1; }
+label { font-size: 11px; font-weight: 700; color: var(--ov1); letter-spacing: .8px; text-transform: uppercase; }
+.form-input {
+  padding: 8px 11px;
+  background: var(--s0); border: 1px solid var(--s1);
+  border-radius: var(--radius); color: var(--text);
+  transition: border-color .12s;
+}
+.form-input:focus { border-color: var(--blue); }
+.form-input::placeholder { color: var(--ov0); }
+
+/* Peer field special */
+.peer-input {
+  font-family: 'Consolas', monospace;
+  letter-spacing: .5px;
+  color: var(--sky);
+}
+.peer-meta { font-size: 11px; color: var(--ov1); margin-top: 3px; }
+
+/* Status select */
+.status-select { padding: 8px 11px; background: var(--s0); border: 1px solid var(--s1); border-radius: var(--radius); color: var(--text); cursor: pointer; }
+.status-select:focus { border-color: var(--blue); }
+
+/* ─── Toast ──────────────────────────────────────────────────────────────── */
+#toasts {
+  position: fixed; bottom: 20px; right: 20px; z-index: 100;
+  display: flex; flex-direction: column; gap: 8px; align-items: flex-end;
+}
+.toast {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px; border-radius: var(--radius);
+  background: var(--mantle); border: 1px solid var(--s1);
+  box-shadow: 0 8px 24px rgba(0,0,0,.4);
+  font-size: 13px; color: var(--text);
+  animation: slideIn .2s ease; max-width: 340px;
+}
+.toast.success { border-left: 3px solid var(--green); }
+.toast.error   { border-left: 3px solid var(--red); }
+.toast.info    { border-left: 3px solid var(--blue); }
+.toast svg { width: 16px; height: 16px; flex-shrink: 0; }
+.toast.success svg { color: var(--green); }
+.toast.error svg   { color: var(--red); }
+.toast.info svg    { color: var(--blue); }
+@keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+
+/* ─── Empty state ────────────────────────────────────────────────────────── */
+.empty-state { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 60px 20px; color: var(--ov0); }
+.empty-state svg { width: 48px; height: 48px; opacity: .3; }
+
+/* ─── Status bar ─────────────────────────────────────────────────────────── */
+#statusbar {
+  background: var(--crust); border-top: 1px solid var(--s0);
+  padding: 4px 16px; font-size: 11px; color: var(--ov1);
+  display: flex; gap: 16px; align-items: center;
+  flex-shrink: 0;
+}
+#statusbar span { color: var(--sub0); }
+
+/* ─── Loading spinner ────────────────────────────────────────────────────── */
+.spinner { width: 18px; height: 18px; border: 2px solid var(--s1); border-top-color: var(--blue); border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── Col widths ─────────────────────────────────────────────────────────── */
+.col-status  { width: 90px; }
+.col-channel { min-width: 160px; }
+.col-group   { width: 130px; }
+.col-quality { width: 60px; text-align: center; }
+.col-source  { width: 120px; }
+.col-peer    { width: 80px; }
+.col-actions { width: 90px; }
+
+/* highlight search */
+mark { background: rgba(249,226,175,.3); color: var(--yellow); border-radius: 2px; padding: 0 1px; }
+</style>
+</head>
+<body>
+
+<!-- ─── SVG ICONS (sprite) ─────────────────────────────────────────────── -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+  <symbol id="i-tv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="7" width="20" height="15" rx="2"/><polyline points="17 2 12 7 7 2"/>
+  </symbol>
+  <symbol id="i-save" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+  </symbol>
+  <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+  </symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+  </symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+  </symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="20 6 9 17 4 12"/>
+  </symbol>
+  <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+  </symbol>
+  <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+  </symbol>
+  <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+  </symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+  </symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+  </symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+  </symbol>
+</svg>
+
+<!-- ─── App ──────────────────────────────────────────────────────────────── -->
+<div id="app">
+
+  <!-- Header -->
+  <header id="header">
+    <div class="logo">
+      <svg><use href="#i-tv"/></svg>
+      IPTV Manager
+    </div>
+    <div class="sep"></div>
+    <span id="badge-total"  class="badge badge-total">— Total</span>
+    <span id="badge-main"   class="badge badge-main">— Main</span>
+    <span id="badge-backup" class="badge badge-backup">— Backup</span>
+    <span id="badge-test"   class="badge badge-test">— Test</span>
+    <span id="badge-disabled" class="badge badge-disabled">— Disabled</span>
+    <div class="header-actions">
+      <button class="btn btn-secondary" onclick="exportM3u()">
+        <svg><use href="#i-download"/></svg> Exportar
+      </button>
+      <button class="btn btn-secondary" id="syncBtn" onclick="syncWeb()">
+        <svg><use href="#i-refresh"/></svg> Sync web
+      </button>
+      <button class="btn btn-secondary" onclick="openCreate()">
+        <svg><use href="#i-plus"/></svg> Nuevo canal
+      </button>
+      <button class="btn btn-primary" onclick="saveM3u()">
+        <svg><use href="#i-save"/></svg> Guardar M3U
+      </button>
+    </div>
+  </header>
+
+  <!-- Sidebar -->
+  <aside id="sidebar">
+    <div class="sidebar-title">
+      <svg style="width:12px;height:12px;vertical-align:middle;margin-right:4px"><use href="#i-folder"/></svg>
+      Grupos
+    </div>
+    <div id="group-list"></div>
+  </aside>
+
+  <!-- Main content -->
+  <main id="main">
+    <!-- Toolbar -->
+    <div id="toolbar">
+      <div class="search-wrap">
+        <svg><use href="#i-search"/></svg>
+        <input id="searchInput" type="text" placeholder="Buscar canal, fuente, peer…" oninput="applyFilters()">
+      </div>
+      <select id="statusFilter" onchange="applyFilters()">
+        <option value="">Todos los estados</option>
+        <option value="MAIN">MAIN</option>
+        <option value="BACKUP">BACKUP</option>
+        <option value="TEST">TEST</option>
+        <option value="DISABLED">DISABLED</option>
+      </select>
+      <div class="toolbar-sep"></div>
+      <span id="rowCount" class="badge badge-total" style="padding:4px 10px">0 canales</span>
+    </div>
+
+    <!-- Table -->
+    <div id="table-wrap">
+      <table id="channelTable">
+        <thead>
+          <tr>
+            <th class="col-status"  data-col="status"  onclick="sortBy('status')">Estado<span class="sort-arrow"></span></th>
+            <th class="col-channel" data-col="channel" onclick="sortBy('channel')">Canal<span class="sort-arrow"></span></th>
+            <th class="col-group"   data-col="group"   onclick="sortBy('group')">Grupo<span class="sort-arrow"></span></th>
+            <th class="col-quality" data-col="quality" onclick="sortBy('quality')">Cal.<span class="sort-arrow"></span></th>
+            <th class="col-source"  data-col="source"  onclick="sortBy('source')">Fuente<span class="sort-arrow"></span></th>
+            <th class="col-peer"    data-col="peer_full" onclick="sortBy('peer_full')">Peer<span class="sort-arrow"></span></th>
+            <th class="col-actions">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="channelBody"></tbody>
+      </table>
+      <div id="emptyState" class="empty-state" style="display:none">
+        <svg><use href="#i-list"/></svg>
+        <p>No hay canales que mostrar</p>
+      </div>
+    </div>
+
+    <!-- Status bar -->
+    <div id="statusbar">
+      <span id="sb-path" title="Ruta del fichero M3U">—</span>
+    </div>
+  </main>
+</div>
+
+<!-- ─── Edit Modal ────────────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="editModal" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modalTitle">Editar canal</span>
+      <button class="modal-close" onclick="closeEditModal()">
+        <svg style="width:16px;height:16px"><use href="#i-x"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editId">
+
+      <div class="form-row">
+        <div class="form-group full">
+          <label>Nombre del canal</label>
+          <input class="form-input" id="editChannel" type="text" placeholder="DAZN 1">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Grupo</label>
+          <input class="form-input" id="editGroup" type="text" placeholder="DEPORTES"
+                 list="groupSuggestions" autocomplete="off">
+          <datalist id="groupSuggestions"></datalist>
+        </div>
+        <div class="form-group">
+          <label>Estado</label>
+          <select class="form-input status-select" id="editStatus">
+            <option value="MAIN">MAIN</option>
+            <option value="BACKUP">BACKUP</option>
+            <option value="TEST">TEST</option>
+            <option value="DISABLED">DISABLED</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Calidad</label>
+          <select class="form-input status-select" id="editQuality">
+            <option value="">—</option>
+            <option value="FHD">FHD</option>
+            <option value="HD">HD</option>
+            <option value="SD">SD</option>
+            <option value="4K">4K</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Fuente</label>
+          <input class="form-input" id="editSource" type="text" placeholder="NEW ERA">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Peer hash (ID AceStream)</label>
+        <input class="form-input peer-input" id="editPeer" type="text" placeholder="40 caracteres hex">
+        <div class="peer-meta" id="peerMeta"></div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>TVG-ID</label>
+          <input class="form-input" id="editTvgId" type="text" placeholder="Canal Name HD">
+        </div>
+        <div class="form-group">
+          <label>TVG-Logo URL</label>
+          <input class="form-input" id="editTvgLogo" type="text" placeholder="https://…">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Notas</label>
+        <input class="form-input" id="editNotes" type="text" placeholder="Observaciones opcionales">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeEditModal()">Cancelar</button>
+      <button class="btn btn-danger btn-sm" id="deleteBtn" onclick="deleteFromModal()">
+        <svg><use href="#i-trash"/></svg> Eliminar
+      </button>
+      <button class="btn btn-primary" id="saveBtn" onclick="saveEdit()">
+        <svg><use href="#i-save"/></svg> Guardar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Sync Modal ────────────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="syncModal" onclick="closeSyncModal(event)">
+  <div class="modal" style="width:640px">
+    <div class="modal-header">
+      <span class="modal-title">Sync · NEW ERA</span>
+      <button class="modal-close" onclick="closeSyncModal()">
+        <svg style="width:16px;height:16px"><use href="#i-x"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" id="syncBody">
+      <div style="display:flex;align-items:center;gap:12px;padding:20px 0">
+        <div class="spinner"></div>
+        <span style="color:var(--sub0)">Descargando y comparando canales…</span>
+      </div>
+    </div>
+    <div class="modal-footer" id="syncFooter" style="display:none">
+      <button class="btn btn-ghost" onclick="closeSyncModal()">Cerrar</button>
+      <button class="btn btn-primary" id="syncSaveBtn" onclick="saveM3u();closeSyncModal()" style="display:none">
+        <svg><use href="#i-save"/></svg> Guardar M3U ahora
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Toasts ────────────────────────────────────────────────────────────── -->
+<div id="toasts"></div>
+
+<!-- ─── JavaScript ───────────────────────────────────────────────────────── -->
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+let allChannels   = [];
+let filteredRows  = [];
+let activeGroup   = '__ALL__';
+let sortCol       = null;
+let sortDir       = 1;
+let m3uPath       = '';
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+async function init() {
+  await loadChannels();
+  await loadStats();
+}
+
+async function loadChannels() {
+  const res  = await fetch('/api/channels');
+  allChannels = await res.json();
+  applyFilters();
+}
+
+async function loadStats() {
+  const res  = await fetch('/api/stats');
+  const data = await res.json();
+  m3uPath = data.path || '';
+
+  document.getElementById('badge-total').textContent    = `${data.total} Total`;
+  document.getElementById('badge-main').textContent     = `${(data.status_counts.MAIN    || 0)} Main`;
+  document.getElementById('badge-backup').textContent   = `${(data.status_counts.BACKUP  || 0)} Backup`;
+  document.getElementById('badge-test').textContent     = `${(data.status_counts.TEST    || 0)} Test`;
+  document.getElementById('badge-disabled').textContent = `${(data.status_counts.DISABLED|| 0)} Disabled`;
+  document.getElementById('sb-path').textContent        = m3uPath;
+
+  renderSidebar(data.group_counts);
+}
+
+// ── Sidebar ──────────────────────────────────────────────────────────────────
+function renderSidebar(groupCounts) {
+  const total  = allChannels.length;
+  const el     = document.getElementById('group-list');
+  const groups = Object.entries(groupCounts).sort((a, b) => a[0].localeCompare(b[0]));
+
+  el.innerHTML = `
+    <div class="group-item ${activeGroup === '__ALL__' ? 'active' : ''}"
+         data-group="__ALL__">
+      <span>Todos los canales</span>
+      <span class="group-count">${total}</span>
+    </div>
+    ${groups.map(([g, c]) => `
+      <div class="group-item ${activeGroup === g ? 'active' : ''}"
+           data-group="${escHtml(g)}">
+        <span>${escHtml(g)}</span>
+        <span class="group-count">${c}</span>
+      </div>
+    `).join('')}
+  `;
+
+  el.querySelectorAll('.group-item').forEach(item => {
+    item.addEventListener('click', () => setGroup(item.dataset.group));
+  });
+}
+
+function setGroup(group) {
+  activeGroup = group;
+  applyFilters();
+  document.querySelectorAll('.group-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.group === group);
+  });
+}
+
+// ── Filters ──────────────────────────────────────────────────────────────────
+function applyFilters() {
+  const q      = document.getElementById('searchInput').value.trim().toLowerCase();
+  const status = document.getElementById('statusFilter').value;
+
+  filteredRows = allChannels.filter(ch => {
+    if (activeGroup !== '__ALL__' && ch.group !== activeGroup) return false;
+    if (status && ch.status !== status) return false;
+    if (q) {
+      const hay = `${ch.channel} ${ch.group} ${ch.source} ${ch.quality} ${ch.peer_full}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  if (sortCol) {
+    filteredRows.sort((a, b) => {
+      const av = (a[sortCol] || '').toLowerCase();
+      const bv = (b[sortCol] || '').toLowerCase();
+      return av < bv ? -sortDir : av > bv ? sortDir : 0;
+    });
+  }
+
+  document.getElementById('rowCount').textContent = `${filteredRows.length} canales`;
+  renderTable(filteredRows, q);
+}
+
+// ── Sort ─────────────────────────────────────────────────────────────────────
+function sortBy(col) {
+  if (sortCol === col) sortDir = -sortDir;
+  else { sortCol = col; sortDir = 1; }
+  document.querySelectorAll('thead th').forEach(th => {
+    th.classList.remove('sort-asc', 'sort-desc');
+    if (th.dataset.col === col) th.classList.add(sortDir === 1 ? 'sort-asc' : 'sort-desc');
+  });
+  applyFilters();
+}
+
+// ── Render table ─────────────────────────────────────────────────────────────
+function hl(text, q) {
+  if (!q || !text) return escHtml(text || '');
+  const re = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  return escHtml(text).replace(re, '<mark>$1</mark>');
+}
+function escHtml(s) { return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+const STATUS_DOT  = { MAIN:'dot-main', BACKUP:'dot-backup', TEST:'dot-test', DISABLED:'dot-disabled' };
+const STATUS_PILL = { MAIN:'pill-main', BACKUP:'pill-backup', TEST:'pill-test', DISABLED:'pill-disabled' };
+
+function renderTable(rows, q = '') {
+  const tbody = document.getElementById('channelBody');
+  const empty = document.getElementById('emptyState');
+  if (!rows.length) {
+    tbody.innerHTML = '';
+    empty.style.display = 'flex';
+    return;
+  }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = rows.map(ch => {
+    const ps  = ch.peer_full ? ch.peer_full.slice(-4) : '—';
+    const dot = STATUS_DOT[ch.status]  || 'dot-disabled';
+    const pill= STATUS_PILL[ch.status] || 'pill-disabled';
+    const dis = ch.status === 'DISABLED' ? ' disabled-row' : '';
+    return `<tr class="${dis}" data-id="${ch.id}">
+      <td class="col-status">
+        <span class="status-pill ${pill}">
+          <span class="status-dot ${dot}"></span>
+          ${ch.status}
+        </span>
+      </td>
+      <td class="col-channel" style="font-weight:600">${hl(ch.channel, q)}</td>
+      <td class="col-group" style="color:var(--sub0)">${hl(ch.group, q)}</td>
+      <td class="col-quality" style="text-align:center;color:var(--mauve)">${ch.quality || '—'}</td>
+      <td class="col-source" style="color:var(--sub0);font-size:12px">${hl(ch.source, q)}</td>
+      <td class="col-peer"><span class="peer-chip">${hl(ps, q)}</span></td>
+      <td class="col-actions">
+        <div class="row-actions">
+          <button class="icon-btn" title="Editar" onclick="openEdit(${ch.id})"><svg><use href="#i-edit"/></svg></button>
+          <button class="icon-btn" title="Duplicar como BACKUP" onclick="duplicateChannel(${ch.id})"><svg><use href="#i-copy"/></svg></button>
+          <button class="icon-btn danger" title="Eliminar" onclick="confirmDelete(${ch.id})"><svg><use href="#i-trash"/></svg></button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Create modal ──────────────────────────────────────────────────────────────
+let _createMode = false;
+
+function openCreate() {
+  _createMode = true;
+  document.getElementById('editId').value       = '';
+  document.getElementById('editChannel').value  = '';
+  document.getElementById('editGroup').value    = activeGroup !== '__ALL__' ? activeGroup : '';
+  document.getElementById('editStatus').value   = 'MAIN';
+  document.getElementById('editQuality').value  = '';
+  document.getElementById('editSource').value   = '';
+  document.getElementById('editPeer').value     = '';
+  document.getElementById('editTvgId').value    = '';
+  document.getElementById('editTvgLogo').value  = '';
+  document.getElementById('editNotes').value    = '';
+  document.getElementById('modalTitle').textContent = 'Nuevo canal';
+  document.getElementById('deleteBtn').style.display = 'none';
+  document.getElementById('saveBtn').innerHTML =
+    '<svg><use href="#i-plus"/></svg> Crear canal';
+  updatePeerMeta();
+  _refreshGroupSuggestions();
+  document.getElementById('editModal').classList.add('open');
+  document.getElementById('editChannel').focus();
+}
+
+function _refreshGroupSuggestions() {
+  const groups = [...new Set(allChannels.map(c => c.group))].sort();
+  const dl = document.getElementById('groupSuggestions');
+  dl.innerHTML = groups.map(g => `<option value="${escHtml(g)}">`).join('');
+}
+
+// ── Edit modal ────────────────────────────────────────────────────────────────
+function openEdit(id) {
+  const ch = allChannels.find(c => c.id === id);
+  if (!ch) return;
+  document.getElementById('editId').value       = ch.id;
+  document.getElementById('editChannel').value  = ch.channel   || '';
+  document.getElementById('editGroup').value    = ch.group     || '';
+  document.getElementById('editStatus').value   = ch.status    || 'MAIN';
+  document.getElementById('editQuality').value  = ch.quality   || '';
+  document.getElementById('editSource').value   = ch.source    || '';
+  document.getElementById('editPeer').value     = ch.peer_full || '';
+  document.getElementById('editTvgId').value    = ch.tvg_id    || '';
+  document.getElementById('editTvgLogo').value  = ch.tvg_logo  || '';
+  document.getElementById('editNotes').value    = ch.notes     || '';
+  document.getElementById('modalTitle').textContent = `Editar · ${ch.channel}`;
+  document.getElementById('deleteBtn').style.display = 'inline-flex';
+  document.getElementById('saveBtn').innerHTML =
+    '<svg><use href="#i-save"/></svg> Guardar';
+  _createMode = false;
+  updatePeerMeta();
+  _refreshGroupSuggestions();
+  document.getElementById('editModal').classList.add('open');
+  document.getElementById('editChannel').focus();
+}
+
+function updatePeerMeta() {
+  const v   = document.getElementById('editPeer').value.trim();
+  const el  = document.getElementById('peerMeta');
+  if (!v) { el.textContent = ''; return; }
+  el.innerHTML = `Longitud: <b style="color:var(--sky)">${v.length}</b> caracteres&nbsp;&nbsp;·&nbsp;&nbsp;
+    Sufijo (últimos 4): <b style="font-family:Consolas;color:var(--sky)">${v.slice(-4)}</b>&nbsp;&nbsp;·&nbsp;&nbsp;
+    URL: <span style="font-size:10px;color:var(--ov0)">http://…/ace/getstream?id=${v}</span>`;
+}
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('editPeer').addEventListener('input', updatePeerMeta);
+});
+
+function closeEditModal() {
+  document.getElementById('editModal').classList.remove('open');
+}
+function closeModal(e) {
+  if (e.target === document.getElementById('editModal')) closeEditModal();
+}
+
+async function saveEdit() {
+  const data = {
+    channel:  document.getElementById('editChannel').value.trim(),
+    group:    document.getElementById('editGroup').value.trim().toUpperCase(),
+    status:   document.getElementById('editStatus').value,
+    quality:  document.getElementById('editQuality').value,
+    source:   document.getElementById('editSource').value.trim(),
+    peer_full:document.getElementById('editPeer').value.trim(),
+    tvg_id:   document.getElementById('editTvgId').value.trim(),
+    tvg_logo: document.getElementById('editTvgLogo').value.trim(),
+    notes:    document.getElementById('editNotes').value.trim(),
+  };
+
+  if (!data.channel) { toast('El nombre del canal es obligatorio', 'error'); return; }
+  if (!data.group)   { toast('El grupo es obligatorio', 'error'); return; }
+
+  if (_createMode) {
+    const res = await fetch('/api/channel/new', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data)
+    });
+    const r = await res.json();
+    if (r.ok) {
+      allChannels.push(r.channel);
+      closeEditModal();
+      applyFilters();
+      loadStats();
+      toast(`Canal "${data.channel}" creado`, 'success');
+    } else {
+      toast('Error al crear canal', 'error');
+    }
+  } else {
+    const id  = parseInt(document.getElementById('editId').value);
+    const res = await fetch(`/api/channel/${id}`, {
+      method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data)
+    });
+    const r = await res.json();
+    if (r.ok) {
+      const idx = allChannels.findIndex(c => c.id === id);
+      if (idx !== -1) allChannels[idx] = r.channel;
+      closeEditModal();
+      applyFilters();
+      loadStats();
+      toast('Canal actualizado', 'success');
+    } else {
+      toast('Error al guardar', 'error');
+    }
+  }
+}
+
+async function deleteFromModal() {
+  const id = parseInt(document.getElementById('editId').value);
+  if (!confirm('¿Eliminar este canal?')) return;
+  await deleteChannel(id);
+  closeEditModal();
+}
+
+// ── CRUD actions ──────────────────────────────────────────────────────────────
+async function duplicateChannel(id) {
+  const res = await fetch(`/api/channel/${id}/duplicate`, { method: 'POST' });
+  const r   = await res.json();
+  if (r.ok) {
+    await loadChannels();
+    loadStats();
+    toast('Canal duplicado como BACKUP', 'info');
+  }
+}
+
+async function confirmDelete(id) {
+  const ch = allChannels.find(c => c.id === id);
+  if (!confirm(`¿Eliminar "${ch?.channel || id}"?`)) return;
+  await deleteChannel(id);
+}
+
+async function deleteChannel(id) {
+  const res = await fetch(`/api/channel/${id}`, { method: 'DELETE' });
+  const r   = await res.json();
+  if (r.ok) {
+    allChannels = allChannels.filter(c => c.id !== id);
+    allChannels.forEach((c, i) => c.id = i);
+    applyFilters();
+    loadStats();
+    toast('Canal eliminado', 'success');
+  }
+}
+
+// ── Save / Export ─────────────────────────────────────────────────────────────
+async function saveM3u() {
+  const res  = await fetch('/api/save', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ path: m3uPath })
+  });
+  const r = await res.json();
+  if (r.ok) {
+    const s = r.stats;
+    toast(`M3U guardado · ${s.MAIN} main, ${s.BACKUP} backup, ${s.DISABLED} disabled`, 'success');
+    loadStats();
+  } else {
+    toast('Error al guardar el fichero', 'error');
+  }
+}
+
+function exportM3u() {
+  window.location.href = '/api/export';
+  toast('Descargando lista M3U…', 'info');
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg, type = 'info') {
+  const icons = {
+    success: '#i-check',
+    error:   '#i-x',
+    info:    '#i-info',
+  };
+  const div = document.createElement('div');
+  div.className = `toast ${type}`;
+  div.innerHTML = `<svg><use href="${icons[type]}"/></svg><span>${msg}</span>`;
+  document.getElementById('toasts').appendChild(div);
+  setTimeout(() => div.remove(), 3500);
+}
+
+// ── Keyboard shortcuts ────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeEditModal();
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveM3u(); }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+    e.preventDefault();
+    document.getElementById('searchInput').focus();
+  }
+});
+
+// ── Sync web ──────────────────────────────────────────────────────────────────
+async function syncWeb() {
+  const btn = document.getElementById('syncBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="width:14px;height:14px"></div> Sincronizando…';
+
+  document.getElementById('syncBody').innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;padding:20px 0">
+      <div class="spinner"></div>
+      <span style="color:var(--sub0)">Descargando canales de la web NEW ERA…</span>
+    </div>`;
+  document.getElementById('syncFooter').style.display = 'none';
+  document.getElementById('syncSaveBtn').style.display = 'none';
+  document.getElementById('syncModal').classList.add('open');
+
+  try {
+    const res  = await fetch('/api/sync', { method: 'POST' });
+    const data = await res.json();
+
+    if (!data.ok) {
+      document.getElementById('syncBody').innerHTML = `
+        <div style="color:var(--red);padding:16px 0">
+          <b>Error:</b> ${escHtml(data.error || 'desconocido')}
+        </div>`;
+    } else if (data.added === 0) {
+      document.getElementById('syncBody').innerHTML = `
+        <div style="padding:16px 0;text-align:center">
+          <div style="font-size:32px;margin-bottom:8px">✓</div>
+          <div style="color:var(--green);font-weight:700;font-size:16px">Todo al dia</div>
+          <div style="color:var(--sub0);margin-top:6px">
+            Se revisaron <b style="color:var(--text)">${data.found}</b> canales
+            y todos ya estaban en tu lista.
+          </div>
+        </div>`;
+    } else {
+      const rows = data.new.map(c => `
+        <tr>
+          <td style="padding:5px 10px;color:var(--mauve);font-size:12px">${escHtml(c.group)}</td>
+          <td style="padding:5px 10px;font-weight:600">${escHtml(c.channel)}</td>
+          <td style="padding:5px 10px;color:var(--sub0);font-size:12px">${escHtml(c.quality)}</td>
+          <td style="padding:5px 10px;color:var(--sub0);font-size:12px">${escHtml(c.source)}</td>
+          <td style="padding:5px 10px"><span class="peer-chip">${escHtml(c.peer)}</span></td>
+        </tr>`).join('');
+
+      document.getElementById('syncBody').innerHTML = `
+        <div style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap">
+          <span class="badge badge-total">${data.found} en web</span>
+          <span class="badge badge-main">${data.added} NUEVOS</span>
+          <span class="badge badge-disabled">${data.skipped} ya existian</span>
+        </div>
+        <div style="max-height:340px;overflow-y:auto;border:1px solid var(--s1);border-radius:8px">
+          <table style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr style="background:var(--crust);font-size:11px;color:var(--ov1);text-transform:uppercase;letter-spacing:.7px">
+                <th style="padding:8px 10px;text-align:left">Grupo</th>
+                <th style="padding:8px 10px;text-align:left">Canal</th>
+                <th style="padding:8px 10px;text-align:left">Cal.</th>
+                <th style="padding:8px 10px;text-align:left">Fuente</th>
+                <th style="padding:8px 10px;text-align:left">Peer</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+        <p style="margin-top:12px;font-size:12px;color:var(--ov1)">
+          Los canales ya estan en memoria. Guarda el M3U para hacerlos permanentes.
+        </p>`;
+      document.getElementById('syncSaveBtn').style.display = 'flex';
+
+      // Recargar tabla y sidebar
+      await loadChannels();
+      await loadStats();
+    }
+  } catch (e) {
+    document.getElementById('syncBody').innerHTML = `
+      <div style="color:var(--red);padding:16px 0">Error de red: ${e.message}</div>`;
+  }
+
+  document.getElementById('syncFooter').style.display = 'flex';
+  btn.disabled = false;
+  btn.innerHTML = '<svg><use href="#i-refresh"/></svg> Sync web';
+}
+
+function closeSyncModal(e) {
+  if (!e || e.target === document.getElementById('syncModal'))
+    document.getElementById('syncModal').classList.remove('open');
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
