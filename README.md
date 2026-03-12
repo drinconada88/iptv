@@ -8,10 +8,13 @@ Gestor web de listas M3U con canales AceStream. Permite editar, filtrar, reorden
 
 - Interfaz web moderna (dark mode) con tabla, filtros, orden y busqueda instantanea.
 - Edicion completa de canales: nombre, grupo, estado, calidad, fuente, peer, tvg-id, logo, notas.
+- Cambio rapido de estado por fila (`MAIN`, `BACKUP`, `TEST`, `DISABLED`) desde la burbuja.
 - Edicion en bloque: seleccionar filas y aplicar estado/grupo/eliminar.
 - Reordenacion drag and drop con persistencia en backend.
 - Sync web de NEW ERA con deteccion de duplicados por peer hash.
-- Test de streams (individual y por lotes).
+- Test de streams manual por canal (`CHECK` -> `ONLINE/OFFLINE`) con bloqueo de concurrencia para no saturar Acexy.
+- Auto-check incremental y seguro en segundo plano (sin barridos masivos).
+- Cabecera con contadores de salud: `Online`, `Offline`, `No probados`.
 - Reproductor integrado y descarga M3U por canal.
 - Endpoint dinamico `live.m3u` para compartir con clientes IPTV.
 - UI responsive para movil.
@@ -26,6 +29,7 @@ iptv/
 |- import_from_web.py     # Sync/scraping NEW ERA
 |- requirements.txt
 |- lista_iptv.m3u         # Fuente principal
+|- health_cache.json      # Estado de checks (online/offline) por peer
 `- templates/
    `- index.html          # UI SPA (HTML/CSS/JS)
 ```
@@ -61,8 +65,12 @@ La app guarda configuracion en `config.json` con estos campos:
 - `ace_path` (normalmente `/ace/getstream?id=`)
 - `nas_path` (opcional)
 - `jellyfin_mode` (boolean)
+- `auto_check_enabled` (boolean)
+- `auto_check_minutes` (float, intervalo entre ciclos)
+- `auto_check_batch_size` (tamano de lote por ciclo)
+- `auto_check_timeout_sec` (timeout por check)
 
-Tambien puedes usar la variable de entorno `IPTV_DATA_DIR` para guardar `lista_iptv.m3u` y `config.json` en otra ruta (ej. Docker o NAS).
+Tambien puedes usar la variable de entorno `IPTV_DATA_DIR` para guardar `lista_iptv.m3u`, `config.json` y `health_cache.json` en otra ruta (ej. Docker o NAS).
 
 ---
 
@@ -136,6 +144,7 @@ Si publicas el endpoint en internet, evita direcciones privadas (`192.168.x.x`) 
 | `GET` | `/api/stats` | Contadores/estadisticas |
 | `GET` | `/api/config` | Lee config |
 | `POST` | `/api/config` | Guarda config |
+| `GET` | `/api/health` | Estado de salud de canales (cacheado) |
 | `GET` | `/live.m3u` | M3U dinamico compartible |
 
 ---
@@ -153,6 +162,9 @@ Si publicas el endpoint en internet, evita direcciones privadas (`192.168.x.x`) 
 - `live.m3u` abre pero no reproduce:
   - Revisar que `host/port` apunten a un Acexy accesible.
   - Verificar que el `id` exista y que AceStream este activo.
+- Muchos `timeout` o `Started new stream ... clients=0` en Acexy:
+  - Reducir `auto_check_minutes` / `auto_check_batch_size` y evitar checks por lote manuales.
+  - Mantener una sola instancia de la app para no duplicar auto-checks.
 - No ves cambios despues de editar:
   - El endpoint en vivo se actualiza al instante, pero para persistir tras reinicio hay que pulsar `Guardar M3U`.
 - En despliegue remoto:

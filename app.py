@@ -26,6 +26,7 @@ BASE_DIR    = os.path.dirname(__file__)
 DATA_DIR    = os.environ.get("IPTV_DATA_DIR", BASE_DIR)
 M3U_FILE    = os.path.join(DATA_DIR, "lista_iptv.m3u")
 CONFIG_FILE = os.path.join(DATA_DIR, "config.json")
+HEALTH_FILE = os.path.join(DATA_DIR, "health_cache.json")
 EPG_URL     = (
     "https://raw.githubusercontent.com/davidmuma/EPG_dobleM/"
     "refs/heads/master/guiatv.xml,"
@@ -42,6 +43,10 @@ _DEFAULT_CFG = {
     "ace_path": "/ace/getstream?id=",
     "nas_path": "",        # Ruta SMB/NAS donde copiar el M3U al guardar
     "jellyfin_mode": False,  # Si True, exporta solo el nombre limpio del canal
+    "auto_check_enabled": True,
+    "auto_check_minutes": 2.0,
+    "auto_check_batch_size": 8,
+    "auto_check_timeout_sec": 4,
 }
 
 def _load_config() -> dict:
@@ -57,6 +62,27 @@ def _save_config(cfg: dict):
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=2)
 
+
+def _load_health_cache():
+    global _health_cache
+    if not os.path.isfile(HEALTH_FILE):
+        _health_cache = {}
+        return
+    try:
+        with open(HEALTH_FILE, encoding="utf-8") as f:
+            data = json.load(f)
+        _health_cache = data if isinstance(data, dict) else {}
+    except Exception:
+        _health_cache = {}
+
+
+def _save_health_cache():
+    try:
+        with open(HEALTH_FILE, "w", encoding="utf-8") as f:
+            json.dump(_health_cache, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        app.logger.warning("No se pudo guardar health cache: %s", e)
+
 def ace_base(cfg: dict | None = None) -> str:
     c = cfg or _load_config()
     return f"http://{c['ace_host']}:{c['ace_port']}{c['ace_path']}"
@@ -65,6 +91,11 @@ def ace_base(cfg: dict | None = None) -> str:
 _channels: list  = []
 _m3u_path: str   = M3U_FILE
 _manual_test_lock = threading.Lock()
+_health_cache: dict = {}
+_health_meta: dict = {"last_run_at": 0, "running": False, "last_batch_count": 0}
+_health_lock = threading.Lock()
+_runtime_boot_lock = threading.Lock()
+_runtime_booted = False
 
 app = Flask(__name__)
 
@@ -259,11 +290,13 @@ def _reindex():
 
 @app.route("/")
 def index():
+    _ensure_runtime_background()
     return render_template("index.html", m3u_path=_m3u_path)
 
 
 @app.route("/api/channels")
 def api_channels():
+    _ensure_runtime_background()
     return jsonify(_channels)
 
 
@@ -522,6 +555,176 @@ def _test_url(url: str, timeout: int = 5) -> dict:
     except Exception as e:
         ms = int((time.time() - t0) * 1000)
         return {"status": "offline", "latency_ms": ms, "detail": str(e)[:80]}
+
+
+def _health_cfg(cfg: dict) -> dict:
+    enabled = bool(cfg.get("auto_check_enabled", True))
+    try:
+        minutes = float(cfg.get("auto_check_minutes", 2.0) or 2.0)
+    except Exception:
+        minutes = 2.0
+    try:
+        batch = int(cfg.get("auto_check_batch_size", 8) or 8)
+    except Exception:
+        batch = 8
+    try:
+        timeout = int(cfg.get("auto_check_timeout_sec", 4) or 4)
+    except Exception:
+        timeout = 4
+    return {
+        "enabled": enabled,
+        "minutes": max(0.5, minutes),
+        "batch_size": max(1, min(25, batch)),
+        "timeout_sec": max(2, min(10, timeout)),
+    }
+
+
+def _channel_base_cooldown(status: str) -> int:
+    st = (status or "").upper()
+    if st == "MAIN":
+        return 120
+    if st == "TEST":
+        return 240
+    if st == "BACKUP":
+        return 480
+    return 360
+
+
+def _health_update_for_peer(peer: str, result: dict, now_ts: int):
+    prev = _health_cache.get(peer, {})
+    prev_fail = int(prev.get("fail_count") or 0)
+    status = (result.get("status") or "error").lower()
+    fail_count = 0 if status == "online" else min(10, prev_fail + 1)
+    _health_cache[peer] = {
+        "status": status,
+        "latency_ms": int(result.get("latency_ms") or 0),
+        "detail": str(result.get("detail") or "")[:120],
+        "checked_at": now_ts,
+        "fail_count": fail_count,
+    }
+
+
+def _pick_health_candidates(batch_size: int) -> list:
+    now = int(time.time())
+    rows = []
+    for ch in _channels:
+        if ch.get("status", "").upper() == "DISABLED":
+            continue
+        peer = (ch.get("peer_full") or "").strip()
+        if not peer:
+            continue
+        h = _health_cache.get(peer, {})
+        last = int(h.get("checked_at") or 0)
+        fail = int(h.get("fail_count") or 0)
+        base = _channel_base_cooldown(ch.get("status", ""))
+        if fail > 0:
+            base *= min(6, 1 + fail)
+        if now - last < base:
+            continue
+        pri = {"MAIN": 0, "TEST": 1, "BACKUP": 2}.get(ch.get("status", "").upper(), 3)
+        rows.append((pri, last, ch))
+    rows.sort(key=lambda x: (x[0], x[1]))
+    return [ch for _, _, ch in rows[:batch_size]]
+
+
+def _run_auto_health_cycle():
+    cfg = _health_cfg(_load_config())
+    if not cfg["enabled"]:
+        return
+    # Un solo flujo de checks (manual o auto), evita saturar Acexy.
+    if not _manual_test_lock.acquire(blocking=False):
+        return
+    batch_count = 0
+    try:
+        with _health_lock:
+            _health_meta["running"] = True
+
+        candidates = _pick_health_candidates(cfg["batch_size"])
+        base = ace_base()
+        now_ts = int(time.time())
+        for ch in candidates:
+            peer = (ch.get("peer_full") or "").strip()
+            if not peer:
+                continue
+            result = _test_url(f"{base}{peer}", timeout=cfg["timeout_sec"])
+            with _health_lock:
+                _health_update_for_peer(peer, result, now_ts)
+            batch_count += 1
+            time.sleep(0.15)
+
+        with _health_lock:
+            _health_meta["last_run_at"] = int(time.time())
+            _health_meta["last_batch_count"] = batch_count
+            _health_meta["running"] = False
+        if batch_count:
+            _save_health_cache()
+    finally:
+        with _health_lock:
+            _health_meta["running"] = False
+        _manual_test_lock.release()
+
+
+def _auto_health_loop():
+    while True:
+        try:
+            cfg = _health_cfg(_load_config())
+            if cfg["enabled"]:
+                _run_auto_health_cycle()
+            sleep_s = max(30, int(cfg["minutes"] * 60))
+            time.sleep(sleep_s)
+        except Exception as e:
+            app.logger.warning("auto_health_loop error: %s", e)
+            time.sleep(30)
+
+
+def _start_auto_health_thread():
+    if getattr(_start_auto_health_thread, "_started", False):
+        return
+    t = threading.Thread(target=_auto_health_loop, daemon=True, name="auto-health")
+    t.start()
+    _start_auto_health_thread._started = True
+
+
+def _ensure_runtime_background():
+    global _runtime_booted
+    if _runtime_booted:
+        return
+    with _runtime_boot_lock:
+        if _runtime_booted:
+            return
+        _load_health_cache()
+        _start_auto_health_thread()
+        _runtime_booted = True
+
+
+def _health_payload() -> dict:
+    now = int(time.time())
+    with _health_lock:
+        meta = dict(_health_meta)
+        cache = dict(_health_cache)
+    rows = {}
+    for ch in _channels:
+        idx = ch["id"]
+        peer = (ch.get("peer_full") or "").strip()
+        if ch.get("status", "").upper() == "DISABLED":
+            rows[idx] = {"status": "disabled", "latency_ms": 0, "detail": "", "checked_at": 0}
+            continue
+        if not peer:
+            rows[idx] = {"status": "no_peer", "latency_ms": 0, "detail": "", "checked_at": 0}
+            continue
+        rows[idx] = cache.get(peer, {"status": "unknown", "latency_ms": 0, "detail": "", "checked_at": 0})
+
+    cfg = _health_cfg(_load_config())
+    last = int(meta.get("last_run_at", 0) or 0)
+    return {
+        "ok": True,
+        "running": bool(meta.get("running", False)),
+        "last_run_at": last,
+        "last_batch_count": int(meta.get("last_batch_count", 0) or 0),
+        "interval_minutes": cfg["minutes"],
+        "next_run_in_sec": max(0, int(cfg["minutes"] * 60) - (now - last)) if last else 0,
+        "results": rows,
+    }
 
 
 @app.route("/api/play/<int:idx>")
@@ -915,6 +1118,11 @@ def api_test_channel(idx: int):
             return jsonify({"ok": False, "status": "no_peer", "latency_ms": 0})
         url    = f"{ace_base()}{peer}"
         result = _test_url(url, timeout=6)
+        with _health_lock:
+            _health_update_for_peer(peer, result, int(time.time()))
+            _health_meta["last_run_at"] = int(time.time())
+            _health_meta["last_batch_count"] = 1
+        _save_health_cache()
         return jsonify({"ok": True, "id": idx, **result})
     finally:
         _manual_test_lock.release()
@@ -924,6 +1132,12 @@ def api_test_channel(idx: int):
 def api_test_batch():
     """Deshabilitado: solo se permiten pruebas manuales unitarias."""
     return jsonify({"ok": False, "error": "batch_disabled_use_manual_single_check"}), 410
+
+
+@app.route("/api/health")
+def api_health():
+    _ensure_runtime_background()
+    return jsonify(_health_payload())
 
 
 @app.route("/api/config", methods=["GET"])
@@ -940,6 +1154,23 @@ def api_config_set():
             cfg[key] = str(data[key]).strip()
     if "jellyfin_mode" in data:
         cfg["jellyfin_mode"] = bool(data["jellyfin_mode"])
+    if "auto_check_enabled" in data:
+        cfg["auto_check_enabled"] = bool(data["auto_check_enabled"])
+    if "auto_check_minutes" in data:
+        try:
+            cfg["auto_check_minutes"] = max(0.5, float(data["auto_check_minutes"]))
+        except Exception:
+            pass
+    if "auto_check_batch_size" in data:
+        try:
+            cfg["auto_check_batch_size"] = max(1, min(25, int(data["auto_check_batch_size"])))
+        except Exception:
+            pass
+    if "auto_check_timeout_sec" in data:
+        try:
+            cfg["auto_check_timeout_sec"] = max(2, min(10, int(data["auto_check_timeout_sec"])))
+        except Exception:
+            pass
     _save_config(cfg)
     return jsonify({"ok": True, "config": cfg, "ace_base": ace_base(cfg)})
 
@@ -977,5 +1208,6 @@ if __name__ == "__main__":
     else:
         print(f"WARN  No existe M3U inicial en {M3U_FILE}")
 
+    _ensure_runtime_background()
     print("\n  IPTV Manager arrancando en http://localhost:5000\n")
     app.run(debug=False, host="0.0.0.0", port=5000)

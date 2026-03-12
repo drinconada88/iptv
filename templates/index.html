@@ -58,6 +58,7 @@ input, select, textarea { outline: none; font-family: inherit; font-size: 14px; 
 #header .logo { display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 700; color: var(--blue); letter-spacing: .5px; }
 #header .logo svg { width: 22px; height: 22px; }
 #header .sep { width: 1px; height: 26px; background: var(--s0); }
+#header .sep-health { width: 1px; height: 20px; background: var(--s1); margin: 0 2px 0 6px; }
 
 .badge {
   display: inline-flex; align-items: center; gap: 5px;
@@ -69,6 +70,9 @@ input, select, textarea { outline: none; font-family: inherit; font-size: 14px; 
 .badge-test     { background: rgba(249,226,175,.15); color: var(--yellow); }
 .badge-disabled { background: rgba(108,112,134,.15); color: var(--ov1); }
 .badge-total    { background: rgba(180,190,254,.15); color: var(--lavender); }
+.badge-online   { background: rgba(166,227,161,.15); color: var(--green); }
+.badge-offline  { background: rgba(243,139,168,.15); color: var(--red); }
+.badge-unknown  { background: rgba(108,112,134,.15); color: var(--sub1); }
 
 .header-actions { margin-left: auto; display: flex; gap: 8px; }
 .btn {
@@ -117,7 +121,12 @@ input, select, textarea { outline: none; font-family: inherit; font-size: 14px; 
   border-bottom: 1px solid var(--s0);
   flex-shrink: 0;
 }
-.search-wrap { position: relative; flex: 1; max-width: 340px; }
+.search-wrap {
+  position: relative;
+  flex: 0 1 520px;
+  min-width: 260px;
+  max-width: 620px;
+}
 .search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--ov0); width: 15px; height: 15px; pointer-events: none; }
 #searchInput {
   width: 100%; padding: 7px 12px 7px 32px;
@@ -173,6 +182,25 @@ tbody td { padding: 0 12px; }
 .status-pill {
   display: inline-flex; align-items: center; gap: 4px;
   padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; letter-spacing: .4px;
+}
+.status-pill-select {
+  appearance: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-align: center;
+  text-align-last: center;
+  padding-left: 8px;
+  padding-right: 8px;
+  background-image: none;
+}
+.status-pill-select:focus { outline: none; border-color: rgba(180,190,254,.45); }
+.status-pill-select option {
+  background: var(--mantle);
+  color: var(--text);
+}
+.status-pill-select option:checked {
+  background: var(--blue);
+  color: var(--crust);
 }
 .pill-main     { background: rgba(166,227,161,.15); color: var(--green); }
 .pill-backup   { background: rgba(137,180,250,.15); color: var(--blue); }
@@ -401,17 +429,6 @@ mark { background: rgba(249,226,175,.3); color: var(--yellow); border-radius: 2p
 .nas-input:focus { outline: none; color: var(--teal); }
 .nas-input::placeholder { color: var(--ov0); font-size: 11px; }
 
-/* Toggle Jellyfin mode */
-.jf-toggle {
-  display: flex; align-items: center; gap: 5px;
-  background: var(--s0); border: 1px solid var(--s1);
-  border-radius: var(--radius); padding: 4px 9px;
-  font-size: 11px; color: var(--ov1); cursor: pointer;
-  transition: all .15s; user-select: none; white-space: nowrap;
-}
-.jf-toggle.active { border-color: var(--teal); color: var(--teal); background: rgba(148,226,213,.08); }
-.jf-toggle input[type=checkbox] { accent-color: var(--teal); cursor: pointer; }
-
 /* ─── Bulk select ────────────────────────────────────────────────────────── */
 tbody tr.selected-row { background: rgba(137,180,250,.07); }
 tbody tr.row-online  { box-shadow: inset 3px 0 0 var(--green); }
@@ -633,6 +650,10 @@ tbody tr.row-timeout { box-shadow: inset 3px 0 0 var(--peach); }
     <span id="badge-backup" class="badge badge-backup">— Backup</span>
     <span id="badge-test"   class="badge badge-test">— Test</span>
     <span id="badge-disabled" class="badge badge-disabled">— Disabled</span>
+    <div class="sep-health"></div>
+    <span id="badge-online" class="badge badge-online">— Online</span>
+    <span id="badge-offline" class="badge badge-offline">— Offline</span>
+    <span id="badge-unknown" class="badge badge-unknown">— No probados</span>
     <div class="header-actions">
       <button class="btn btn-secondary" onclick="exportM3u()">
         <svg><use href="#i-download"/></svg> Exportar
@@ -667,7 +688,7 @@ tbody tr.row-timeout { box-shadow: inset 3px 0 0 var(--peach); }
         <input id="searchInput" type="text" placeholder="Buscar canal, fuente, peer…" oninput="applyFilters()">
       </div>
       <select id="statusFilter" onchange="applyFilters()">
-        <option value="">Todos los estados</option>
+        <option value="">Estados</option>
         <option value="MAIN">MAIN</option>
         <option value="BACKUP">BACKUP</option>
         <option value="TEST">TEST</option>
@@ -697,18 +718,12 @@ tbody tr.row-timeout { box-shadow: inset 3px 0 0 var(--peach); }
           <svg style="width:12px;height:12px"><use href="#i-check"/></svg>
         </button>
       </div>
-      <label class="jf-toggle" id="jfToggle" title="Modo Jellyfin: exporta solo el nombre limpio del canal (sin calidad/fuente/peer)">
-        <input type="checkbox" id="cfgJellyfinMode" onchange="saveConfig()">
-        <svg style="width:12px;height:12px"><use href="#i-tv"/></svg>
-        Jellyfin
-      </label>
       <button class="btn btn-ghost btn-sm" onclick="selectAllVisible()" title="Seleccionar todas las filas visibles">
         Seleccionar todo
       </button>
       <button class="btn btn-ghost btn-sm" onclick="clearSelection()" title="Quitar toda la selección">
         Deseleccionar
       </button>
-      <span id="rowCount" class="badge badge-total" style="padding:4px 10px">0 canales</span>
     </div>
 
     <!-- Bulk actions bar -->
@@ -751,6 +766,7 @@ tbody tr.row-timeout { box-shadow: inset 3px 0 0 var(--peach); }
     <!-- Status bar -->
     <div id="statusbar">
       <span id="sb-path" title="Ruta del fichero M3U">—</span>
+      <span id="sb-health" title="Última comprobación automática">Health: —</span>
     </div>
   </main>
 </div>
@@ -911,7 +927,9 @@ let sortCol       = null;
 let sortDir       = 1;
 let m3uPath       = '';
 let _streamHealth = new Map();
-let _checkInProgress = false;
+let _manualCheckRunning = false;
+let _autoCheckRunning = false;
+let _healthPollTimer = null;
 
 // ── Config ────────────────────────────────────────────────────────────────────
 let _aceBase = 'http://192.168.1.169:8081/ace/getstream?id=';
@@ -922,9 +940,6 @@ async function loadConfig() {
   document.getElementById('cfgHost').value = cfg.ace_host || '';
   document.getElementById('cfgPort').value = cfg.ace_port || '';
   document.getElementById('cfgNasPath').value = cfg.nas_path || '';
-  const jfCb = document.getElementById('cfgJellyfinMode');
-  jfCb.checked = !!cfg.jellyfin_mode;
-  document.getElementById('jfToggle').classList.toggle('active', !!cfg.jellyfin_mode);
   _aceBase = `http://${cfg.ace_host}:${cfg.ace_port}${cfg.ace_path}`;
 }
 
@@ -932,23 +947,19 @@ async function saveConfig() {
   const host    = document.getElementById('cfgHost').value.trim();
   const port    = document.getElementById('cfgPort').value.trim();
   const nasPath = document.getElementById('cfgNasPath').value.trim();
-  const jfMode  = document.getElementById('cfgJellyfinMode').checked;
   if (!host || !port) { toast('Introduce IP y puerto', 'error'); return; }
 
   const res = await fetch('/api/config', {
     method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ ace_host: host, ace_port: port,
-                           nas_path: nasPath, jellyfin_mode: jfMode })
+    body: JSON.stringify({ ace_host: host, ace_port: port, nas_path: nasPath })
   });
   const r = await res.json();
   if (r.ok) {
     _aceBase = r.ace_base;
-    document.getElementById('jfToggle').classList.toggle('active', jfMode);
     [document.getElementById('proxySaveBtn'), document.getElementById('nasSaveBtn')]
       .forEach(btn => { btn.classList.add('saved'); setTimeout(() => btn.classList.remove('saved'), 2000); });
-    const jfTxt = jfMode ? ' · Modo Jellyfin ON' : '';
     const nasTxt = nasPath ? ` · NAS: ${nasPath}` : '';
-    toast(`Config guardada${jfTxt}${nasTxt}`, 'success');
+    toast(`Config guardada${nasTxt}`, 'success');
   } else {
     toast('Error guardando configuración', 'error');
   }
@@ -969,6 +980,9 @@ async function init() {
   await loadConfig();
   await loadChannels();
   await loadStats();
+  await loadHealthStatus();
+  if (_healthPollTimer) clearInterval(_healthPollTimer);
+  _healthPollTimer = setInterval(loadHealthStatus, 15000);
 }
 
 async function loadChannels() {
@@ -979,6 +993,7 @@ async function loadChannels() {
   for (const id of Array.from(_streamHealth.keys())) {
     if (!alive.has(id)) _streamHealth.delete(id);
   }
+  _refreshHealthHeaderBadges();
   applyFilters();
 }
 
@@ -1054,7 +1069,6 @@ function applyFilters() {
     });
   }
 
-  document.getElementById('rowCount').textContent = `${filteredRows.length} canales`;
   renderTable(filteredRows, q);
 }
 
@@ -1079,6 +1093,7 @@ function escHtml(s) { return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;'
 
 const STATUS_DOT  = { MAIN:'dot-main', BACKUP:'dot-backup', TEST:'dot-test', DISABLED:'dot-disabled' };
 const STATUS_PILL = { MAIN:'pill-main', BACKUP:'pill-backup', TEST:'pill-test', DISABLED:'pill-disabled' };
+const STATUS_OPTIONS = ['MAIN', 'BACKUP', 'TEST', 'DISABLED'];
 
 function renderTable(rows, q = '') {
   const tbody = document.getElementById('channelBody');
@@ -1102,7 +1117,7 @@ function renderTable(rows, q = '') {
         </div>
       </td>
       <td class="col-status" style="white-space:nowrap">
-        <span class="status-pill ${pill}">${ch.status}</span>
+        ${_statusControlHtml(ch)}
         ${_streamPillHtml(ch.id)}
       </td>
       <td class="col-channel" style="font-weight:600">${hl(ch.channel, q)}</td>
@@ -1127,7 +1142,7 @@ function renderTable(rows, q = '') {
 
   tbody.querySelectorAll('tr').forEach(row => {
     row.addEventListener('click', e => {
-      if (e.target.closest('button') || e.target.closest('.drag-handle')) return;
+      if (e.target.closest('button') || e.target.closest('select') || e.target.closest('.drag-handle')) return;
       const id = parseInt(row.dataset.id, 10);
       toggleRowSelect(id);
     });
@@ -1478,6 +1493,41 @@ function _streamPillHtml(id) {
                style="cursor:pointer">CHECK</span>`;
 }
 
+function _statusControlHtml(ch) {
+  const st = STATUS_OPTIONS.includes(ch.status) ? ch.status : 'BACKUP';
+  const cls = STATUS_PILL[st] || 'pill-disabled';
+  const opts = STATUS_OPTIONS.map(s => `<option value="${s}" ${s === st ? 'selected' : ''}>${s}</option>`).join('');
+  return `<select class="status-pill status-pill-select ${cls}"
+                  title="Cambiar estado"
+                  onclick="event.stopPropagation()"
+                  onchange="updateStatusInline(${ch.id}, this.value)">
+            ${opts}
+          </select>`;
+}
+
+async function updateStatusInline(id, status) {
+  const ch = allChannels.find(c => c.id === id);
+  if (!ch || ch.status === status) return;
+  const res = await fetch(`/api/channel/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status })
+  });
+  const r = await res.json();
+  if (!r.ok) {
+    toast('No se pudo cambiar el estado', 'error');
+    applyFilters();
+    return;
+  }
+  const idx = allChannels.findIndex(c => c.id === id);
+  if (idx !== -1) allChannels[idx] = r.channel;
+  if (status === 'DISABLED') {
+    _streamHealth.set(id, { status: 'disabled', latency_ms: 0, detail: '' });
+  }
+  applyFilters();
+  loadStats();
+}
+
 function playChannel(id) {
   const ch = allChannels.find(c => c.id === id);
   if (!ch) return;
@@ -1492,6 +1542,7 @@ function _pillView(info) {
   const st = String(info.status).toLowerCase();
   const ms = Number(info.latency_ms || 0);
   const detail = info.detail ? ` · ${info.detail}` : '';
+  if (st === 'unknown') return { cls: 'sp-idle', txt: 'CHECK', title: 'Aún no comprobado', rowCls: '' };
   if (st === 'busy') return { cls: 'sp-testing', txt: 'TEST', title: 'Otra comprobación en curso', rowCls: '' };
   if (st === 'testing') return { cls: 'sp-testing', txt: 'TEST', title: 'Probando stream…', rowCls: '' };
   if (st === 'online' && ms > 3500) return { cls: 'sp-slow', txt: 'ONLINE', title: `Online lento (${ms} ms)${detail}`, rowCls: 'row-online' };
@@ -1522,8 +1573,61 @@ function _paintVisibleStreamPills() {
   filteredRows.forEach(ch => _paintPill(ch.id));
 }
 
-function _setChecksDisabled(disabled) {
-  _checkInProgress = disabled;
+function _refreshHealthHeaderBadges() {
+  let online = 0;
+  let offline = 0;
+  let unknown = 0;
+  allChannels.forEach(ch => {
+    if ((ch.status || '').toUpperCase() === 'DISABLED') return;
+    const st = String(_streamHealth.get(ch.id)?.status || 'unknown').toLowerCase();
+    if (st === 'online') {
+      online += 1;
+      return;
+    }
+    if (st === 'offline' || st === 'timeout' || st === 'error') {
+      offline += 1;
+      return;
+    }
+    unknown += 1;
+  });
+  document.getElementById('badge-online').textContent = `${online} Online`;
+  document.getElementById('badge-offline').textContent = `${offline} Offline`;
+  document.getElementById('badge-unknown').textContent = `${unknown} No probados`;
+}
+
+function _fmtTime(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts * 1000);
+  return d.toLocaleTimeString();
+}
+
+async function loadHealthStatus() {
+  try {
+    const res = await fetch('/api/health');
+    const data = await res.json();
+    if (!data.ok) return;
+    const results = data.results || {};
+    Object.entries(results).forEach(([id, row]) => {
+      _streamHealth.set(Number(id), row || {});
+    });
+    _paintVisibleStreamPills();
+    _refreshHealthHeaderBadges();
+    _autoCheckRunning = !!data.running;
+    _setChecksDisabled();
+    const sec = Number(data.next_run_in_sec || 0);
+    const nextTxt = sec ? ` · next ${sec}s` : '';
+    const batch = Number(data.last_batch_count || 0);
+    const runTxt = _autoCheckRunning ? ' · running...' : '';
+    const batchTxt = ` · batch ${batch}`;
+    document.getElementById('sb-health').textContent =
+      `Health: ${_fmtTime(Number(data.last_run_at || 0))}${batchTxt}${nextTxt}${runTxt}`;
+  } catch (_) {
+    // mantener ultimo estado visual cacheado
+  }
+}
+
+function _setChecksDisabled() {
+  const disabled = _manualCheckRunning || _autoCheckRunning;
   document.querySelectorAll('.stream-pill[id^="spill-"]').forEach(el => {
     el.classList.toggle('disabled', disabled);
     if (!disabled) return;
@@ -1535,7 +1639,7 @@ function _setChecksDisabled(disabled) {
 
 async function _probeOne(id, userTriggered = false, e = null) {
   if (e) e.stopPropagation();
-  if (_checkInProgress) return;
+  if (_manualCheckRunning || _autoCheckRunning) return;
   const ch = allChannels.find(c => c.id === id);
   if (!ch) return;
   if (!ch.peer_full) {
@@ -1544,7 +1648,8 @@ async function _probeOne(id, userTriggered = false, e = null) {
     if (userTriggered) toast('Ese canal no tiene peer', 'error');
     return;
   }
-  _setChecksDisabled(true);
+  _manualCheckRunning = true;
+  _setChecksDisabled();
   _streamHealth.set(id, { status: 'testing' });
   _paintPill(id);
   try {
@@ -1568,7 +1673,8 @@ async function _probeOne(id, userTriggered = false, e = null) {
     _paintPill(id);
     if (userTriggered) toast('Error comprobando stream', 'error');
   } finally {
-    _setChecksDisabled(false);
+    _manualCheckRunning = false;
+    _setChecksDisabled();
   }
 }
 
