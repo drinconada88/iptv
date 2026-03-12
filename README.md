@@ -1,166 +1,163 @@
-# 📺 IPTV Manager
+# IPTV Manager
 
-> Gestor web de listas M3U con canales AceStream. Edita, organiza y sincroniza tu lista directamente desde el navegador.
-
----
-
-## ✨ Features
-
-- 🌐 **Interfaz web moderna** — tema oscuro Catppuccin Mocha, layout tipo Dispatcharr/m3u-editor
-- 📋 **Tabla de canales** — ordenable por cualquier columna, búsqueda instantánea con highlight
-- 🗂️ **Sidebar de grupos** — filtra por categoría con un click (DAZN, LA LIGA, FORMULA 1, UFC…)
-- ✏️ **Edición completa** — modal con todos los campos: nombre, grupo, calidad, fuente, peer hash, estado, logo, notas
-- ➕ **Crear canales** — formulario con autocompletado de grupos existentes, soporte para grupos nuevos
-- 🔄 **Sync web** — scraping automático de [NEW ERA](https://ipfs.io/ipns/k2k4r8oqlcjxsritt5mczkcn4mmvcmymbqw7113fz2flkrerfwfps004/) con detección de duplicados por peer hash
-- 📊 **Badges en tiempo real** — contadores MAIN / BACKUP / TEST / DISABLED siempre actualizados
-- 💾 **Guardar M3U** — escribe directamente el fichero fuente en formato limpio y estructurado
-- 📥 **Exportar** — descarga una copia limpia sin tocar el fichero original
-- ⌨️ **Atajos de teclado** — `Ctrl+S` guarda, `Ctrl+F` foca el buscador, `Esc` cierra modales
+Gestor web de listas M3U con canales AceStream. Permite editar, filtrar, reordenar, probar streams y publicar un endpoint `live.m3u` compartible.
 
 ---
 
-## 🏗️ Arquitectura
+## Features
 
-```
+- Interfaz web moderna (dark mode) con tabla, filtros, orden y busqueda instantanea.
+- Edicion completa de canales: nombre, grupo, estado, calidad, fuente, peer, tvg-id, logo, notas.
+- Edicion en bloque: seleccionar filas y aplicar estado/grupo/eliminar.
+- Reordenacion drag and drop con persistencia en backend.
+- Sync web de NEW ERA con deteccion de duplicados por peer hash.
+- Test de streams (individual y por lotes).
+- Reproductor integrado y descarga M3U por canal.
+- Endpoint dinamico `live.m3u` para compartir con clientes IPTV.
+- UI responsive para movil.
+
+---
+
+## Estructura
+
+```text
 iptv/
-├── app.py                 # Backend Flask — API REST + parser M3U
-├── import_from_web.py     # Scraper web NEW ERA (CLI + modo --json para la API)
-├── editor.py              # (legacy) Tkinter desktop app
-├── convert_to_csv.py      # (legacy) Migración M3U → CSV
-├── generate_m3u.py        # (legacy) Generador CSV → M3U
-├── requirements.txt       # Dependencias Python
-├── lista_iptv.m3u         # Fichero fuente (fuente de verdad)
-└── templates/
-    └── index.html         # SPA — HTML + CSS (Catppuccin) + Vanilla JS
+|- app.py                 # Backend Flask (API + parser + live.m3u)
+|- import_from_web.py     # Sync/scraping NEW ERA
+|- requirements.txt
+|- lista_iptv.m3u         # Fuente principal
+`- templates/
+   `- index.html          # UI SPA (HTML/CSS/JS)
 ```
-
-### Stack
-
-| Capa | Tecnología |
-|---|---|
-| Backend | Python 3.12 + Flask 3.x |
-| Frontend | HTML5 + CSS custom (sin frameworks) + Vanilla JS |
-| Datos | M3U plano (fuente única de verdad) |
-| Streams | AceStream via HTTP proxy local |
 
 ---
 
-## 🚀 Instalación y uso
-
-### Requisitos
+## Requisitos
 
 - Python 3.10+
-- Servidor AceStream corriendo en red local
+- AceStream/Acexy disponible (local o remoto)
 
-### Setup
+---
+
+## Instalacion rapida
 
 ```bash
-# Clonar el repo
 git clone https://github.com/drinconada88/iptv.git
 cd iptv
-
-# Instalar dependencias
 pip install -r requirements.txt
-
-# Arrancar
 python app.py
 ```
 
-Abre el navegador en **http://localhost:5000**
+Abrir `http://localhost:5000`.
 
 ---
 
-## 🗂️ Formato M3U
+## Configuracion
 
-El fichero se guarda con una estructura limpia y legible:
+La app guarda configuracion en `config.json` con estos campos:
 
-```m3u
-####################################################
-# CATEGORÍA: DAZN
-####################################################
+- `ace_host`
+- `ace_port`
+- `ace_path` (normalmente `/ace/getstream?id=`)
+- `nas_path` (opcional)
+- `jellyfin_mode` (boolean)
 
-# ────────── Canal: DAZN 1 ──────────
-# TVG-ID : DAZN 1
-# Logo   : https://...
+Tambien puedes usar la variable de entorno `IPTV_DATA_DIR` para guardar `lista_iptv.m3u` y `config.json` en otra ruta (ej. Docker o NAS).
 
-# Fuente: NEW ERA  |  Calidad: FHD  |  Peer: ad6d  |  Estado: MAIN
-#EXTINF:-1 tvg-id="DAZN 1" tvg-logo="..." group-title="DAZN",DAZN 1 | FHD | NEW ERA | ad6d
-http://192.168.1.169:8081/ace/getstream?id=...
+---
 
-# Fuente: ELCANO  |  Calidad:   |  Peer: 8e62  |  Estado: BACKUP
-#EXTINF:-1 tvg-id="DAZN 1" tvg-logo="" group-title="DAZN",DAZN 1 | ELCANO | 8e62
-http://192.168.1.169:8081/ace/getstream?id=...
+## Endpoint compartible: `/live.m3u`
+
+`/live.m3u` se genera en vivo desde los canales cargados en memoria.
+
+- Cambios en UI se reflejan al instante en el endpoint vivo.
+- `Guardar M3U` persiste esos cambios en disco (`lista_iptv.m3u` y opcional `nas_path`).
+
+### Parametros soportados
+
+| Parametro | Tipo | Ejemplo | Descripcion |
+|---|---|---|---|
+| `host` | string | `192.168.1.50` | Host/IP del servidor Acexy al que apuntaran los canales del M3U. |
+| `port` | string/int | `8081` | Puerto de Acexy. |
+| `status` | string | `MAIN` | Filtra por estado (`MAIN`, `BACKUP`, `TEST`). `DISABLED` siempre se excluye. |
+| `group` | string | `DAZN` | Filtra por grupo exacto. |
+
+### Reglas de construccion de URL
+
+1. La ruta de stream se toma del config interno `ace_path` (normalmente `/ace/getstream?id=`).
+2. El cliente puede sobreescribir solo `host` y `port`.
+3. El esquema se decide automaticamente:
+   - `https` cuando `port=443`
+   - `http` en cualquier otro caso
+4. El puerto se omite automaticamente en:
+   - `https` + `443`
+   - `http` + `80`
+
+### Ejemplos listos para usar
+
+Caso basico:
+
+```text
+https://iptv.skylate.com/live.m3u
 ```
 
-### Estados disponibles
+Solo IP y puerto (tu caso):
 
-| Estado | Significado |
-|---|---|
-| `MAIN` | Fuente principal activa |
-| `BACKUP` | Fuente de respaldo |
-| `TEST` | En pruebas |
-| `DISABLED` | Desactivado (URL comentada en el M3U) |
-
----
-
-## 🔄 Sync web NEW ERA
-
-El botón **Sync web** (o CLI `python import_from_web.py`) descarga la lista pública de [NEW ERA](https://ipfs.io/ipns/k2k4r8oqlcjxsritt5mczkcn4mmvcmymbqw7113fz2flkrerfwfps004/), detecta canales que no estén ya en tu lista (comparando por **peer hash completo**) y los añade como `BACKUP`.
-
-```bash
-# Ver qué añadiría sin guardar nada
-python import_from_web.py --dry-run
-
-# Añadir directamente al M3U
-python import_from_web.py
+```text
+https://iptv.skylate.com/live.m3u?host=192.168.1.50&port=8081
 ```
 
+Con filtros:
+
+```text
+https://iptv.skylate.com/live.m3u?host=192.168.1.50&port=8081&status=MAIN&group=DAZN
+```
+
+### Nota importante para compartir con mas gente
+
+Si publicas el endpoint en internet, evita direcciones privadas (`192.168.x.x`) en la salida final. Usa `host` publico (dominio/IP publica) y un reverse proxy correcto.
+
 ---
 
-## 🛠️ API REST
+## API REST (resumen)
 
-| Método | Ruta | Descripción |
+| Metodo | Ruta | Descripcion |
 |---|---|---|
-| `GET` | `/api/channels` | Lista todos los canales |
-| `GET` | `/api/stats` | Stats + conteo por grupo y estado |
-| `POST` | `/api/channel/new` | Crear canal nuevo |
-| `PUT` | `/api/channel/<id>` | Actualizar canal |
-| `DELETE` | `/api/channel/<id>` | Eliminar canal |
-| `POST` | `/api/channel/<id>/duplicate` | Duplicar como BACKUP |
-| `POST` | `/api/save` | Guardar M3U al disco |
-| `GET` | `/api/export` | Descargar M3U como fichero |
-| `POST` | `/api/sync` | Sincronizar con web NEW ERA |
-| `POST` | `/api/load` | Cargar otro fichero M3U |
+| `GET` | `/api/channels` | Lista de canales |
+| `PUT` | `/api/channel/<id>` | Actualiza canal |
+| `DELETE` | `/api/channel/<id>` | Elimina canal |
+| `POST` | `/api/channel/new` | Crea canal |
+| `POST` | `/api/channel/<id>/duplicate` | Duplica canal como BACKUP |
+| `POST` | `/api/reorder` | Guarda orden manual |
+| `POST` | `/api/save` | Persiste M3U a disco |
+| `GET` | `/api/export` | Export M3U |
+| `POST` | `/api/load` | Carga M3U de ruta |
+| `POST` | `/api/sync` | Sync NEW ERA |
+| `GET` | `/api/stats` | Contadores/estadisticas |
+| `GET` | `/api/config` | Lee config |
+| `POST` | `/api/config` | Guarda config |
+| `GET` | `/live.m3u` | M3U dinamico compartible |
 
 ---
 
-## ⌨️ Atajos de teclado
+## Atajos
 
-| Atajo | Acción |
-|---|---|
-| `Ctrl + S` | Guardar M3U |
-| `Ctrl + F` | Foco en buscador |
-| `Esc` | Cerrar modal |
+- `Ctrl + S`: guardar
+- `Ctrl + F`: foco buscador
+- `Esc`: cerrar modal
 
 ---
 
-## 📝 Grupos de canales
+## Troubleshooting rapido
 
-Los grupos actuales en la lista:
-
-`1RFEF` · `BUNDESLIGA` · `COPA DEL REY` · `DAZN` · `DEPORTES` · `EUROSPORT` · `EVENTOS` · `FORMULA 1` · `FUTBOL INT` · `HYPERMOTION` · `LA LIGA` · `LIGA DE CAMPEONES` · `LIGA ENDESA` · `MOTOR` · `MOVISTAR` · `MOVISTAR DEPORTES` · `NBA` · `OTROS` · `SPORT TV` · `TDT` · `TENNIS` · `UFC`
-
----
-
-## 🔮 Roadmap
-
-- [ ] Drag & drop para reordenar canales
-- [ ] Edición en bloque (cambiar estado/grupo a múltiples canales)
-- [ ] Historial de cambios / undo
-- [ ] Soporte para múltiples ficheros M3U
-- [ ] Programar sync automático (cron)
-- [ ] Test de stream desde la interfaz (ping AceStream)
+- `live.m3u` abre pero no reproduce:
+  - Revisar que `host/port` apunten a un Acexy accesible.
+  - Verificar que el `id` exista y que AceStream este activo.
+- No ves cambios despues de editar:
+  - El endpoint en vivo se actualiza al instante, pero para persistir tras reinicio hay que pulsar `Guardar M3U`.
+- En despliegue remoto:
+  - Asegurar reverse proxy para Flask y (si aplica) para `/ace/...`.
 
 ---
 
-<p align="center">Built with 🖤 for self-hosted IPTV</p>
+Built for self-hosted IPTV workflows.

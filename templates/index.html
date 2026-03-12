@@ -396,18 +396,34 @@ mark { background: rgba(249,226,175,.3); color: var(--yellow); border-radius: 2p
 .jf-toggle input[type=checkbox] { accent-color: var(--teal); cursor: pointer; }
 
 /* ─── Bulk select ────────────────────────────────────────────────────────── */
-.col-check { width: 32px; padding: 0 4px !important; }
-.row-check { accent-color: var(--blue); cursor: pointer; width: 14px; height: 14px; }
 tbody tr.selected-row { background: rgba(137,180,250,.07); }
 
 /* Bulk actions bar */
+#main { position: relative; }
+
 #bulkBar {
-  display: none; align-items: center; gap: 8px;
-  padding: 7px 16px; background: rgba(137,180,250,.08);
-  border-bottom: 1px solid var(--blue);
-  flex-shrink: 0;
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: color-mix(in srgb, var(--mantle) 92%, black 8%);
+  border: 1px solid var(--blue);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 24px rgba(0,0,0,.35);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(6px);
+  transition: opacity .14s ease, transform .14s ease;
 }
-#bulkBar.visible { display: flex; }
+#bulkBar.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
 #bulkCount { font-size: 12px; color: var(--blue); font-weight: 700; white-space: nowrap; }
 .bulk-group-input {
   background: var(--s0); border: 1px solid var(--s1); border-radius: 6px;
@@ -421,8 +437,100 @@ tbody tr.selected-row { background: rgba(137,180,250,.07); }
 .player-status { font-size: 12px; min-height: 18px; }
 .player-url-row { display: flex; align-items: center; gap: 8px; }
 .player-url { font-family: 'Consolas', monospace; font-size: 11px; color: var(--sky); word-break: break-all; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ─── Responsive (mobile/tablet) ─────────────────────────────────────────── */
+@media (max-width: 980px) {
+  #app {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto 1fr;
+  }
+
+  #header {
+    padding: 10px 12px;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  #header .sep { display: none; }
+
+  .badge {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+
+  .header-actions {
+    width: 100%;
+    margin-left: 0;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+  .header-actions .btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  #sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--s0);
+    padding: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  .sidebar-title { display: none; }
+  #group-list {
+    display: flex;
+    gap: 6px;
+    min-width: max-content;
+  }
+  .group-item {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 6px 10px;
+  }
+
+  #toolbar {
+    padding: 8px 10px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .search-wrap { flex: 1 1 100%; max-width: none; }
+  #statusFilter { flex: 1 1 48%; min-width: 0; }
+  .toolbar-sep { display: none; }
+  .proxy-widget, .nas-widget { display: none; }
+  #rowCount { margin-left: auto; }
+
+  #table-wrap { overflow: auto; }
+  table { min-width: 640px; }
+
+  /* En móvil priorizamos Estado + Canal + Peer + Acciones */
+  #channelTable th:nth-child(1),
+  #channelTable td:nth-child(1),
+  #channelTable th:nth-child(4),
+  #channelTable td:nth-child(4),
+  #channelTable th:nth-child(5),
+  #channelTable td:nth-child(5),
+  #channelTable th:nth-child(6),
+  #channelTable td:nth-child(6) {
+    display: none;
+  }
+
+  tbody td { padding: 0 8px; }
+  .row-actions { opacity: 1; }
+  .icon-btn { width: 24px; height: 24px; }
+
+  #bulkBar {
+    left: 8px;
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    padding: 7px 9px;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/mpegts.js@latest/dist/mpegts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
 <body>
 
@@ -574,6 +682,12 @@ tbody tr.selected-row { background: rgba(137,180,250,.07); }
         <svg style="width:12px;height:12px"><use href="#i-tv"/></svg>
         Jellyfin
       </label>
+      <button class="btn btn-ghost btn-sm" onclick="selectAllVisible()" title="Seleccionar todas las filas visibles">
+        Seleccionar todo
+      </button>
+      <button class="btn btn-ghost btn-sm" onclick="clearSelection()" title="Quitar toda la selección">
+        Deseleccionar
+      </button>
       <span id="rowCount" class="badge badge-total" style="padding:4px 10px">0 canales</span>
     </div>
 
@@ -596,7 +710,6 @@ tbody tr.selected-row { background: rgba(137,180,250,.07); }
       <table id="channelTable">
         <thead>
           <tr>
-            <th class="col-check"><input type="checkbox" class="row-check" id="checkAll" title="Seleccionar todos" onchange="toggleSelectAll(this.checked)"></th>
             <th class="col-drag" title="Arrastrar para reordenar"></th>
             <th class="col-status"  data-col="status"  onclick="sortBy('status')">Estado<span class="sort-arrow"></span></th>
             <th class="col-channel" data-col="channel" onclick="sortBy('channel')">Canal<span class="sort-arrow"></span></th>
@@ -750,7 +863,7 @@ tbody tr.selected-row { background: rgba(137,180,250,.07); }
     <div class="player-footer">
       <div id="playerStatus" class="player-status"></div>
       <div class="player-url-row">
-        <span style="font-size:11px;color:var(--ov1);flex-shrink:0">HLS:</span>
+        <span id="playerUrlLabel" style="font-size:11px;color:var(--ov1);flex-shrink:0">Stream:</span>
         <span id="playerUrl" class="player-url" title=""></span>
         <button class="btn btn-ghost btn-sm" onclick="copyPlayerUrl()" style="flex-shrink:0">Copiar URL</button>
       </div>
@@ -954,14 +1067,8 @@ function renderTable(rows, q = '') {
     const ps      = ch.peer_full ? ch.peer_full.slice(-4) : '—';
     const pill    = STATUS_PILL[ch.status] || 'pill-disabled';
     const dis     = ch.status === 'DISABLED' ? ' disabled-row' : '';
-    const checked = _selectedIds.has(ch.id) ? ' checked' : '';
     const selCls  = _selectedIds.has(ch.id) ? ' selected-row' : '';
     return `<tr class="${dis}${selCls}" data-id="${ch.id}" draggable="true">
-      <td class="col-check">
-        <input type="checkbox" class="row-check"${checked}
-               onchange="toggleRowSelect(${ch.id}, this.checked)"
-               onclick="event.stopPropagation()">
-      </td>
       <td class="col-drag">
         <div class="drag-handle" title="Arrastrar para reordenar">
           <svg style="width:14px;height:14px"><use href="#i-grip"/></svg>
@@ -986,6 +1093,14 @@ function renderTable(rows, q = '') {
       </td>
     </tr>`;
   }).join('');
+
+  tbody.querySelectorAll('tr').forEach(row => {
+    row.addEventListener('click', e => {
+      if (e.target.closest('button') || e.target.closest('.drag-handle')) return;
+      const id = parseInt(row.dataset.id, 10);
+      toggleRowSelect(id);
+    });
+  });
 
   // Registrar eventos drag & drop en las filas recién renderizadas
   initDragDrop();
@@ -1177,11 +1292,12 @@ function exportM3u() {
 let _selectedIds = new Set();
 
 function toggleRowSelect(id, checked) {
-  if (checked) _selectedIds.add(id);
-  else         _selectedIds.delete(id);
+  const next = typeof checked === 'boolean' ? checked : !_selectedIds.has(id);
+  if (next) _selectedIds.add(id);
+  else      _selectedIds.delete(id);
   _updateBulkBar();
   const row = document.querySelector(`tr[data-id="${id}"]`);
-  if (row) row.classList.toggle('selected-row', checked);
+  if (row) row.classList.toggle('selected-row', next);
 }
 
 function toggleSelectAll(checked) {
@@ -1189,14 +1305,16 @@ function toggleSelectAll(checked) {
     if (checked) _selectedIds.add(ch.id);
     else         _selectedIds.delete(ch.id);
   });
-  document.querySelectorAll('.row-check:not(#checkAll)').forEach(cb => cb.checked = checked);
   document.querySelectorAll('tbody tr').forEach(tr => tr.classList.toggle('selected-row', checked));
   _updateBulkBar();
 }
 
+function selectAllVisible() {
+  toggleSelectAll(true);
+}
+
 function clearSelection() {
   _selectedIds.clear();
-  document.querySelectorAll('.row-check').forEach(cb => cb.checked = false);
   document.querySelectorAll('tbody tr').forEach(tr => tr.classList.remove('selected-row'));
   _updateBulkBar();
 }
@@ -1206,8 +1324,6 @@ function _updateBulkBar() {
   const bar = document.getElementById('bulkBar');
   bar.classList.toggle('visible', n > 0);
   document.getElementById('bulkCount').textContent = `${n} seleccionado${n !== 1 ? 's' : ''}`;
-  const allCb = document.getElementById('checkAll');
-  if (allCb) allCb.checked = n > 0 && n >= filteredRows.length;
 }
 
 async function bulkSetStatus(status) {
@@ -1226,9 +1342,7 @@ async function bulkSetStatus(status) {
   ids.forEach(id => {
     _selectedIds.add(id);
     const row = document.querySelector(`tr[data-id="${id}"]`);
-    const cb  = row?.querySelector('.row-check');
     if (row) row.classList.add('selected-row');
-    if (cb)  cb.checked = true;
   });
   _updateBulkBar();
   toast(`${ids.length} canales → ${status}`, 'success');
@@ -1306,74 +1420,206 @@ function playChannel(id) {
   toast(`Descargando M3U de ${ch.channel}…`, 'info');
 }
 
-// ── Reproductor integrado (mpegts.js) ────────────────────────────────────────
+// ── Reproductor integrado (MPEG-TS + fallback HLS) ──────────────────────────
 let _mpegtsPlayer = null;
+let _hlsPlayer = null;
 let _playerStreamUrl = '';
+// En algunas instalaciones de Acexy no existe /ace/manifest.m3u8 (404),
+// así que el fallback HLS debe estar desactivado para no romper el play.
+const ENABLE_HLS_FALLBACK = false;
+
+function _setPlayerStatus(html) {
+  document.getElementById('playerStatus').innerHTML = html;
+}
+
+function _setPlayerUrl(label, url) {
+  const labelEl = document.getElementById('playerUrlLabel');
+  const urlEl = document.getElementById('playerUrl');
+  labelEl.textContent = label;
+  urlEl.textContent = url;
+  urlEl.title = url;
+  _playerStreamUrl = url;
+}
 
 function openPlayer(id) {
   const ch = allChannels.find(c => c.id === id);
   if (!ch || !ch.peer_full) return;
 
-  // URL real AceStream (solo para mostrar)
   const aceUrl = _aceBase + ch.peer_full;
-  // URL proxy Flask (mismo origen → sin CORS)
-  const streamUrl = `/api/stream/${id}`;
-  _playerStreamUrl = aceUrl;
+  const tsUrl = `/api/stream/${id}`;
+  const hlsUrl = `/api/hls/${id}`;
+  const tsUrlAbs = new URL(tsUrl, window.location.origin).href;
+  const hlsUrlAbs = new URL(hlsUrl, window.location.origin).href;
 
-  // UI del modal
   document.getElementById('playerTitle').textContent = '▶  ' + ch.channel;
-  const urlEl = document.getElementById('playerUrl');
-  urlEl.textContent = aceUrl;
-  urlEl.title = aceUrl;
   document.getElementById('playerHost').textContent =
     _aceBase.match(/https?:\/\/([^/]+)/)?.[1] || '…';
-  document.getElementById('playerStatus').innerHTML =
-    '<span style="color:var(--blue)">Iniciando stream en Acexy… (puede tardar hasta 30 s)</span>';
+  _setPlayerStatus('<span style="color:var(--blue)">Iniciando stream en Acexy… (puede tardar hasta 30 s)</span>');
 
-  // Limpiar instancia anterior
   _destroyPlayer();
-  const video = document.getElementById('playerVideo');
-
   document.getElementById('playerModal').classList.add('open');
 
-  if (typeof mpegts === 'undefined' || !mpegts.getFeatureList().mseLivePlayback) {
-    document.getElementById('playerStatus').innerHTML =
-      '<span style="color:var(--yellow)">⚠ MPEG-TS no soportado en este navegador. Prueba con Chrome.</span>';
-    return;
-  }
-
-  _mpegtsPlayer = mpegts.createPlayer({
-    type: 'mpegts',
-    isLive: true,
-    url: streamUrl,
-  }, {
-    enableWorker: true,
-    liveBufferLatencyChasing: true,
-    liveBufferLatencyMaxLatency: 8,
-    liveBufferLatencyMinRemain: 2,
-  });
-
-  _mpegtsPlayer.attachMediaElement(video);
-  _mpegtsPlayer.load();
-
-  _mpegtsPlayer.on(mpegts.Events.MEDIA_INFO, () => {
-    document.getElementById('playerStatus').innerHTML =
-      '<span style="color:var(--green)">✓ Stream conectado · reproduciendo</span>';
-    video.play().catch(() => {});
-  });
-
-  _mpegtsPlayer.on(mpegts.Events.ERROR, (errType, errDetail) => {
-    document.getElementById('playerStatus').innerHTML =
-      `<span style="color:var(--red)">✗ Error: ${errType} — ${errDetail}</span>` +
-      `<span style="color:var(--ov1);margin-left:8px;font-size:11px">¿AceStream activo en el proxy?</span>`;
+  _startMpegtsWithFallback({
+    tsUrl,
+    hlsUrl,
+    tsUrlAbs,
+    hlsUrlAbs,
+    aceUrl,
   });
 }
 
-function _destroyPlayer() {
+function _startMpegtsWithFallback(ctx) {
+  const video = document.getElementById('playerVideo');
+  let switchedToHls = false;
+
+  const fallbackToHls = (reason = '') => {
+    if (!ENABLE_HLS_FALLBACK) {
+      _setPlayerStatus(
+        `<span style="color:var(--red)">✗ Error MPEG-TS: ${escHtml(reason || 'desconocido')}</span>` +
+        '<span style="color:var(--ov1);margin-left:8px;font-size:11px">HLS no disponible en este Acexy (manifest 404)</span>'
+      );
+      return;
+    }
+    if (switchedToHls) return;
+    switchedToHls = true;
+    _destroyMpegtsOnly();
+    const reasonTxt = reason ? ` (${reason})` : '';
+    _setPlayerStatus(`<span style="color:var(--yellow)">MPEG-TS no disponible${reasonTxt}. Probando fallback HLS…</span>`);
+    _setPlayerUrl('HLS proxy:', ctx.hlsUrlAbs);
+    _startHls(ctx.hlsUrl, ctx.aceUrl);
+  };
+
+  if (typeof mpegts === 'undefined') {
+    fallbackToHls('mpegts.js no cargado');
+    return;
+  }
+
+  _setPlayerUrl('TS proxy:', ctx.tsUrlAbs);
+
+  let startupTimer = setTimeout(() => {
+    fallbackToHls('timeout inicial');
+  }, 45000);
+
+  try {
+    _mpegtsPlayer = mpegts.createPlayer({
+      type: 'mpegts',
+      isLive: true,
+      url: ctx.tsUrl,
+    }, {
+      // Menos agresivo y más compatible en Windows/Chrome con streams Acexy.
+      enableWorker: false,
+      enableStashBuffer: false,
+      liveBufferLatencyChasing: true,
+      liveBufferLatencyMaxLatency: 8,
+      liveBufferLatencyMinRemain: 2,
+    });
+
+    _mpegtsPlayer.attachMediaElement(video);
+    _mpegtsPlayer.load();
+
+    _mpegtsPlayer.on(mpegts.Events.MEDIA_INFO, () => {
+      clearTimeout(startupTimer);
+      _setPlayerStatus('<span style="color:var(--green)">✓ Stream conectado por MPEG-TS · reproduciendo</span>');
+      video.play().catch(() => {});
+    });
+
+    _mpegtsPlayer.on(mpegts.Events.ERROR, (errType, errDetail) => {
+      clearTimeout(startupTimer);
+      fallbackToHls(`${errType} — ${errDetail}`);
+    });
+
+    _mpegtsPlayer.on(mpegts.Events.LOADING_COMPLETE, () => {
+      _setPlayerStatus('<span style="color:var(--yellow)">Fin de stream recibido desde proxy</span>');
+    });
+  } catch (e) {
+    clearTimeout(startupTimer);
+    fallbackToHls(e?.message || 'error interno');
+  }
+}
+
+function _startHls(hlsUrl, aceUrl) {
+  const video = document.getElementById('playerVideo');
+  let networkRetries = 0;
+  const maxNetworkRetries = 5;
+
+  if (window.Hls && Hls.isSupported()) {
+    _hlsPlayer = new Hls({
+      enableWorker: true,
+      lowLatencyMode: true,
+      backBufferLength: 30,
+      maxBufferLength: 15,
+    });
+
+    _hlsPlayer.loadSource(hlsUrl);
+    _hlsPlayer.attachMedia(video);
+
+    _hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => {
+      _setPlayerStatus('<span style="color:var(--green)">✓ Stream conectado por HLS · reproduciendo</span>');
+      video.play().catch(() => {});
+    });
+
+    _hlsPlayer.on(Hls.Events.ERROR, (_, data) => {
+      if (!data?.fatal) return;
+      if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+        networkRetries += 1;
+        if (networkRetries <= maxNetworkRetries) {
+          _setPlayerStatus(`<span style="color:var(--peach)">Error de red HLS. Reintentando… (${networkRetries}/${maxNetworkRetries})</span>`);
+          _hlsPlayer.startLoad();
+          return;
+        }
+        _setPlayerStatus(
+          '<span style="color:var(--red)">✗ Error de red HLS persistente</span>' +
+          `<span style="color:var(--ov1);margin-left:8px;font-size:11px">Revisa AceStream en ${aceUrl}</span>`
+        );
+        _destroyHlsOnly();
+        return;
+      }
+      if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+        _setPlayerStatus('<span style="color:var(--peach)">Error de media HLS. Recuperando…</span>');
+        _hlsPlayer.recoverMediaError();
+        return;
+      }
+      _setPlayerStatus(
+        `<span style="color:var(--red)">✗ Error HLS fatal: ${data.type || 'desconocido'}</span>` +
+        `<span style="color:var(--ov1);margin-left:8px;font-size:11px">¿AceStream activo en ${aceUrl}?</span>`
+      );
+      _destroyHlsOnly();
+    });
+    return;
+  }
+
+  if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    video.src = hlsUrl;
+    video.addEventListener('loadedmetadata', () => {
+      _setPlayerStatus('<span style="color:var(--green)">✓ Stream conectado por HLS nativo · reproduciendo</span>');
+      video.play().catch(() => {});
+    }, { once: true });
+    video.addEventListener('error', () => {
+      _setPlayerStatus('<span style="color:var(--red)">✗ Error reproduciendo HLS nativo</span>');
+    }, { once: true });
+    return;
+  }
+
+  _setPlayerStatus('<span style="color:var(--red)">✗ Este navegador no soporta reproducción HLS</span>');
+}
+
+function _destroyMpegtsOnly() {
   if (_mpegtsPlayer) {
     _mpegtsPlayer.destroy();
     _mpegtsPlayer = null;
   }
+}
+
+function _destroyHlsOnly() {
+  if (_hlsPlayer) {
+    _hlsPlayer.destroy();
+    _hlsPlayer = null;
+  }
+}
+
+function _destroyPlayer() {
+  _destroyMpegtsOnly();
+  _destroyHlsOnly();
   const video = document.getElementById('playerVideo');
   if (video) {
     video.pause();

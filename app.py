@@ -9,6 +9,7 @@ import http.client
 import json
 import os
 import re
+import socket
 import time
 import urllib.error
 import urllib.parse
@@ -369,17 +370,25 @@ def live_m3u():
     Parámetros opcionales:
       ?host=192.168.1.x  → IP del servidor Acexy (por defecto la del config)
       ?port=8081         → Puerto del servidor Acexy (por defecto el del config)
-      ?jellyfin=1        → nombres limpios (solo canal | peer)
       ?status=MAIN       → filtrar por estado (MAIN, BACKUP, TEST; omite DISABLED siempre)
       ?group=Fútbol      → filtrar por grupo (exacto)
     """
-    cfg     = _load_config()
-    host    = request.args.get("host", "").strip() or cfg.get("ace_host", "")
-    port    = request.args.get("port", "").strip() or cfg.get("ace_port", "")
-    path    = cfg.get("ace_path", "/ace/getstream?id=")
-    base    = f"http://{host}:{port}{path}"
+    cfg  = _load_config()
+    host = request.args.get("host", "").strip() or cfg.get("ace_host", "")
+    port = request.args.get("port", "").strip() or str(cfg.get("ace_port", ""))
+    path = cfg.get("ace_path", "/ace/getstream?id=")
+    if not path.startswith("/"):
+        path = "/" + path
 
-    jmode   = request.args.get("jellyfin", "") == "1" or cfg.get("jellyfin_mode", False)
+    # Simplificado: solo host/port configurables por query string.
+    scheme = "https" if port == "443" else "http"
+    include_port = not (
+        (scheme == "https" and port == "443") or
+        (scheme == "http" and port == "80")
+    )
+    netloc = f"{host}:{port}" if include_port and port else host
+    base = f"{scheme}://{netloc}{path}"
+
     only_st = request.args.get("status", "").upper()
     only_gr = request.args.get("group", "")
 
@@ -401,14 +410,11 @@ def live_m3u():
         tvg_logo = ch.get("tvg_logo", "")
         ps       = peer_short(peer)
 
-        if jmode:
-            display = f"{channel} | {ps}" if ps else channel
-        else:
-            parts = [channel]
-            if quality: parts.append(quality)
-            if source:  parts.append(source)
-            if ps:      parts.append(ps)
-            display = " | ".join(parts)
+        parts = [channel]
+        if quality: parts.append(quality)
+        if source:  parts.append(source)
+        if ps:      parts.append(ps)
+        display = " | ".join(parts)
 
         lines.append(
             f'#EXTINF:-1 tvg-id="{tvg_id}" tvg-logo="{tvg_logo}" '
@@ -548,7 +554,7 @@ def api_play(idx: int):
     }
 
 
-def _acexy_connect(url: str, timeout: int = 60):
+def _acexy_connect(url: str, timeout: int = 60, read_timeout: int = 60):
     """Abre conexión a Acexy/AceStream con reintentos.
 
     Acexy devuelve 500 mientras el stream está arrancando (puede tardar varios
@@ -566,7 +572,8 @@ def _acexy_connect(url: str, timeout: int = 60):
         port = p.port or 80
         path = (p.path or "/") + (f"?{p.query}" if p.query else "")
 
-        conn = http.client.HTTPConnection(host, port, timeout=10)
+        # timeout del socket para lectura continua de stream (no solo handshake)
+        conn = http.client.HTTPConnection(host, port, timeout=read_timeout)
         try:
             conn.request("GET", path, headers={"User-Agent": "VLC/3.0"})
             r = conn.getresponse()
@@ -615,16 +622,26 @@ def api_stream(idx: int):
     if not peer:
         return "No peer configured", 400
 
-    r, conn = _acexy_connect(ace_base() + peer, timeout=30)
+    r, conn = _acexy_connect(ace_base() + peer, timeout=45, read_timeout=60)
     if r is None:
         return "No se pudo conectar con Acexy/AceStream", 502
 
     content_type = r.getheader("Content-Type", "video/mp2t")
+    if not content_type or content_type.lower() == "application/octet-stream":
+        # mpegts.js es más estable cuando declaramos TS explícitamente
+        content_type = "video/mp2t"
 
     def generate():
         try:
             while True:
-                chunk = r.read(65536)
+                try:
+                    chunk = r.read(65536)
+                except (socket.timeout, TimeoutError):
+                    # Algunos peers tienen pausas largas; mantener conexión viva.
+                    continue
+                except Exception as e:
+                    app.logger.warning("stream read error idx=%s peer=%s: %s", idx, peer[-8:], e)
+                    break
                 if not chunk:
                     break
                 yield chunk
@@ -638,7 +655,11 @@ def api_stream(idx: int):
     return Response(
         stream_with_context(generate()),
         content_type=content_type,
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
     )
 
 
@@ -737,47 +758,135 @@ def api_hls_seg():
 def _proxy_m3u8(url: str):
     """Descarga un manifiesto M3U8 y reescribe todas las URLs para pasar por Flask."""
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "VLC/3.0"})
-        with urllib.request.urlopen(req, timeout=10) as r:
-            content  = r.read().decode("utf-8")
-            final_url = r.url  # puede haber redirect
+        fetched = _acexy_http_fetch(url, timeout=35)
     except Exception as e:
         return Response(f"# Error fetching manifest: {e}", 502,
                         content_type="application/vnd.apple.mpegurl")
 
-    base = final_url.rsplit("/", 1)[0] + "/"
-    lines = []
-    for line in content.splitlines():
-        stripped = line.strip()
-        if stripped and not stripped.startswith("#"):
-            abs_url = stripped if stripped.startswith("http") else base + stripped
-            enc = base64.urlsafe_b64encode(abs_url.encode()).decode()
-            lines.append(f"/api/hls/seg?u={enc}")
-        else:
-            lines.append(line)
+    ct = fetched["headers"].get("Content-Type", "application/vnd.apple.mpegurl")
+    try:
+        text = fetched["data"].decode("utf-8")
+    except UnicodeDecodeError:
+        text = fetched["data"].decode("latin-1", errors="replace")
+    rewritten = _rewrite_m3u8(text, fetched["final_url"])
 
-    return Response("\n".join(lines), 200,
-                    content_type="application/vnd.apple.mpegurl",
+    return Response(rewritten, 200,
+                    content_type=ct,
                     headers={"Cache-Control": "no-cache"})
 
 
 def _proxy_hls_resource(url: str):
     """Descarga un chunklist o segmento TS y lo sirve al navegador."""
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "VLC/3.0"})
-        with urllib.request.urlopen(req, timeout=15) as r:
-            data = r.read()
-            ct   = r.headers.get("Content-Type", "application/octet-stream")
-            final_url = r.url
+        fetched = _acexy_http_fetch(url, timeout=20)
     except Exception as e:
         return Response(f"Error: {e}", 502)
 
+    data = fetched["data"]
+    ct = fetched["headers"].get("Content-Type", "application/octet-stream")
+    final_url = fetched["final_url"]
+
     # Si es un sub-manifiesto (chunklist) también hay que reescribir sus URLs
-    if "mpegurl" in ct.lower() or url.split("?")[0].endswith(".m3u8"):
-        return _proxy_m3u8(final_url if final_url != url else url)
+    if "mpegurl" in ct.lower() or final_url.split("?")[0].endswith(".m3u8"):
+        try:
+            text = data.decode("utf-8")
+        except UnicodeDecodeError:
+            text = data.decode("latin-1", errors="replace")
+        rewritten = _rewrite_m3u8(text, final_url)
+        return Response(rewritten, 200,
+                        content_type="application/vnd.apple.mpegurl",
+                        headers={"Cache-Control": "no-cache"})
 
     return Response(data, 200, content_type=ct,
                     headers={"Cache-Control": "no-cache"})
+
+
+def _rewrite_m3u8(content: str, base_url: str) -> str:
+    """Reescribe URLs de un M3U8 para que todo pase por /api/hls/seg."""
+    lines = []
+    for line in content.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            lines.append(line)
+            continue
+
+        # URI dentro de tags (#EXT-X-KEY, #EXT-X-MEDIA, etc.)
+        if stripped.startswith("#"):
+            def repl_uri(m):
+                raw = m.group(1)
+                abs_url = urllib.parse.urljoin(base_url, raw)
+                enc = base64.urlsafe_b64encode(abs_url.encode()).decode()
+                return f'URI="/api/hls/seg?u={enc}"'
+
+            rewritten_tag = re.sub(r'URI="([^"]+)"', repl_uri, line)
+            lines.append(rewritten_tag)
+            continue
+
+        # Línea normal con URL/segmento
+        abs_url = urllib.parse.urljoin(base_url, stripped)
+        enc = base64.urlsafe_b64encode(abs_url.encode()).decode()
+        lines.append(f"/api/hls/seg?u={enc}")
+
+    return "\n".join(lines)
+
+
+def _acexy_http_fetch(url: str, timeout: int = 20, max_wait: int = 35) -> dict:
+    """GET robusto para Acexy/AceStream, con redirect-fix y reintentos."""
+    original_host = urllib.parse.urlparse(url).hostname
+    current_url = url
+    deadline = time.time() + max_wait
+
+    while time.time() < deadline:
+        p = urllib.parse.urlparse(current_url)
+        host = p.hostname
+        port = p.port or 80
+        path = (p.path or "/") + (f"?{p.query}" if p.query else "")
+        conn = http.client.HTTPConnection(host, port, timeout=timeout)
+        try:
+            conn.request("GET", path, headers={"User-Agent": "VLC/3.0"})
+            r = conn.getresponse()
+        except Exception as e:
+            conn.close()
+            app.logger.warning("acexy_http_fetch error %s: %s", current_url, e)
+            time.sleep(1.5)
+            continue
+
+        if r.status in (200, 206):
+            data = r.read()
+            headers = dict(r.getheaders())
+            r.close()
+            conn.close()
+            return {"data": data, "headers": headers, "final_url": current_url}
+
+        if r.status in (301, 302, 307, 308):
+            location = r.getheader("Location", "")
+            r.read()
+            conn.close()
+            if not location:
+                break
+            next_url = urllib.parse.urljoin(current_url, location)
+            pl = urllib.parse.urlparse(next_url)
+            if pl.hostname in ("127.0.0.1", "localhost", "0.0.0.0"):
+                next_url = urllib.parse.urlunparse(
+                    pl._replace(netloc=f"{original_host}:{pl.port or 80}")
+                )
+            current_url = next_url
+            time.sleep(0.3)
+            continue
+
+        # 500/502/503/504: engine arrancando o proxy temporalmente no listo
+        if r.status in (500, 502, 503, 504):
+            body = r.read(180).decode("utf-8", errors="replace").strip()
+            conn.close()
+            app.logger.info("acexy_http_fetch %s -> %s (%s), retry...", current_url, r.status, body[:80])
+            time.sleep(1.5)
+            continue
+
+        body = r.read(180).decode("utf-8", errors="replace").strip()
+        conn.close()
+        raise RuntimeError(f"HTTP {r.status}: {body[:120]}")
+
+    raise RuntimeError("timeout fetching resource from Acexy/AceStream")
 
 
 @app.route("/api/test/ping")
@@ -863,9 +972,23 @@ def api_stats():
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
+    # Primer arranque en Docker: si /data está vacío, inicializa con el M3U
+    # incluido en la imagen (solo una vez).
+    seed_file = os.path.join(BASE_DIR, "lista_iptv.m3u")
+    if not os.path.isfile(M3U_FILE) and os.path.isfile(seed_file):
+        try:
+            os.makedirs(os.path.dirname(M3U_FILE), exist_ok=True)
+            with open(seed_file, encoding="utf-8") as src, open(M3U_FILE, "w", encoding="utf-8") as dst:
+                dst.write(src.read())
+            print(f"OK  Seed M3U copiado a {M3U_FILE}")
+        except Exception as e:
+            print(f"WARN  No se pudo inicializar M3U en {M3U_FILE}: {e}")
+
     if os.path.isfile(M3U_FILE):
         load_m3u(M3U_FILE)
         print(f"OK  Cargados {len(_channels)} canales desde {M3U_FILE}")
+    else:
+        print(f"WARN  No existe M3U inicial en {M3U_FILE}")
 
     print("\n  IPTV Manager arrancando en http://localhost:5000\n")
     app.run(debug=False, host="0.0.0.0", port=5000)
