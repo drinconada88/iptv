@@ -182,19 +182,31 @@ tbody td { padding: 0 12px; }
 /* Stream test pill (segunda burbujita junto al estado) */
 .stream-pill {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 22px; height: 18px; border-radius: 10px; font-size: 10px;
-  flex-shrink: 0; cursor: default; transition: all .2s;
+  min-width: 72px; height: 20px; border-radius: 999px; font-size: 10px;
+  font-weight: 700; letter-spacing: .4px; padding: 0 8px;
+  flex-shrink: 0; cursor: pointer; transition: all .15s;
+  border: 1px solid transparent;
 }
-.sp-idle     { background: var(--s1); color: var(--ov0); }
+.sp-idle     { background: var(--s1); color: var(--sub1); border-color: rgba(186,194,222,.28); }
 .sp-play     { background: rgba(166,227,161,.12); color: var(--green); font-size: 9px; transition: all .15s; }
-.sp-play:hover { background: rgba(166,227,161,.3); transform: scale(1.15); }
-.sp-online   { background: rgba(166,227,161,.2); color: var(--green); box-shadow: 0 0 4px rgba(166,227,161,.4); }
-.sp-slow     { background: rgba(249,226,175,.2); color: var(--yellow); }
+.sp-play:hover { background: rgba(166,227,161,.25); }
+.sp-online   { background: rgba(166,227,161,.22); color: var(--green); border-color: rgba(166,227,161,.45); }
+.sp-slow     { background: rgba(249,226,175,.2); color: var(--yellow); border-color: rgba(249,226,175,.4); }
 .sp-timeout  { background: rgba(250,179,135,.2); color: var(--peach); }
-.sp-offline  { background: rgba(243,139,168,.2); color: var(--red); }
+.sp-offline  { background: rgba(243,139,168,.35); color: #ffd6de; border-color: rgba(243,139,168,.9); }
 .sp-error    { background: rgba(108,112,134,.2); color: var(--ov1); }
-.sp-testing  { background: rgba(137,180,250,.15); color: var(--blue); animation: spin .7s linear infinite; }
+.sp-testing  {
+  background: linear-gradient(110deg,
+    rgba(137,180,250,.12) 8%,
+    rgba(137,180,250,.30) 18%,
+    rgba(137,180,250,.12) 33%);
+  background-size: 200% 100%;
+  color: var(--blue);
+  border-color: rgba(137,180,250,.45);
+  animation: loadingSheen 1.2s ease-in-out infinite;
+}
 .sp-nopeer   { background: var(--s1); color: var(--s2); }
+.stream-pill.disabled { opacity: .45; pointer-events: none; cursor: not-allowed; }
 
 .peer-chip {
   font-family: 'Consolas', monospace; font-size: 12px;
@@ -298,6 +310,11 @@ label { font-size: 11px; font-weight: 700; color: var(--ov1); letter-spacing: .8
 /* ─── Loading spinner ────────────────────────────────────────────────────── */
 .spinner { width: 18px; height: 18px; border: 2px solid var(--s1); border-top-color: var(--blue); border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; }
 @keyframes spin { to { transform: rotate(360deg); } }
+@keyframes loadingSheen {
+  0%   { background-position: 200% 0; opacity: .85; }
+  50%  { background-position: 120% 0; opacity: 1; }
+  100% { background-position: 0% 0; opacity: .85; }
+}
 
 /* ─── Proxy widget ───────────────────────────────────────────────────────── */
 .proxy-widget {
@@ -397,6 +414,9 @@ mark { background: rgba(249,226,175,.3); color: var(--yellow); border-radius: 2p
 
 /* ─── Bulk select ────────────────────────────────────────────────────────── */
 tbody tr.selected-row { background: rgba(137,180,250,.07); }
+tbody tr.row-online  { box-shadow: inset 3px 0 0 var(--green); }
+tbody tr.row-offline { box-shadow: inset 3px 0 0 var(--red); }
+tbody tr.row-timeout { box-shadow: inset 3px 0 0 var(--peach); }
 
 /* Bulk actions bar */
 #main { position: relative; }
@@ -890,6 +910,8 @@ let activeGroup   = '__ALL__';
 let sortCol       = null;
 let sortDir       = 1;
 let m3uPath       = '';
+let _streamHealth = new Map();
+let _checkInProgress = false;
 
 // ── Config ────────────────────────────────────────────────────────────────────
 let _aceBase = 'http://192.168.1.169:8081/ace/getstream?id=';
@@ -952,6 +974,11 @@ async function init() {
 async function loadChannels() {
   const res  = await fetch('/api/channels');
   allChannels = await res.json();
+  // Limpia cache de health para canales eliminados
+  const alive = new Set(allChannels.map(c => c.id));
+  for (const id of Array.from(_streamHealth.keys())) {
+    if (!alive.has(id)) _streamHealth.delete(id);
+  }
   applyFilters();
 }
 
@@ -1087,6 +1114,10 @@ function renderTable(rows, q = '') {
         <div class="row-actions">
           <button class="icon-btn" title="Editar" onclick="openEdit(${ch.id})"><svg><use href="#i-edit"/></svg></button>
           ${ch.peer_full ? `<button class="icon-btn" title="Ver en reproductor integrado" onclick="openPlayer(${ch.id})"><svg><use href="#i-monitor"/></svg></button>` : ''}
+          ${ch.status !== 'DISABLED'
+            ? `<button class="icon-btn danger" title="Deshabilitar canal (quedará comentado en el M3U)" onclick="toggleChannelEnabled(${ch.id}, false)"><svg><use href="#i-stop"/></svg></button>`
+            : `<button class="icon-btn" title="Habilitar canal (volverá como TEST)" onclick="toggleChannelEnabled(${ch.id}, true)"><svg><use href="#i-check"/></svg></button>`
+          }
           <button class="icon-btn" title="Duplicar como BACKUP" onclick="duplicateChannel(${ch.id})"><svg><use href="#i-copy"/></svg></button>
           <button class="icon-btn danger" title="Eliminar" onclick="confirmDelete(${ch.id})"><svg><use href="#i-trash"/></svg></button>
         </div>
@@ -1104,6 +1135,7 @@ function renderTable(rows, q = '') {
 
   // Registrar eventos drag & drop en las filas recién renderizadas
   initDragDrop();
+  _paintVisibleStreamPills();
 }
 
 // ── Create modal ──────────────────────────────────────────────────────────────
@@ -1263,6 +1295,40 @@ async function deleteChannel(id) {
   }
 }
 
+async function toggleChannelEnabled(id, enable) {
+  const ch = allChannels.find(c => c.id === id);
+  if (!ch) return;
+
+  const currentHealth = _streamHealth.get(id)?.status || '';
+  if (!enable && String(currentHealth).toLowerCase() === 'online') {
+    const ok = confirm(`"${ch.channel}" aparece ONLINE. ¿Seguro que quieres deshabilitarlo?`);
+    if (!ok) return;
+  }
+
+  const nextStatus = enable ? 'TEST' : 'DISABLED';
+  const res = await fetch(`/api/channel/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: nextStatus })
+  });
+  const r = await res.json();
+  if (!r.ok) {
+    toast('No se pudo actualizar el estado del canal', 'error');
+    return;
+  }
+
+  const idx = allChannels.findIndex(c => c.id === id);
+  if (idx !== -1) allChannels[idx] = r.channel;
+  applyFilters();
+  loadStats();
+
+  if (enable) {
+    toast(`Canal habilitado como TEST. Si va bien, puedes pasarlo a MAIN/BACKUP.`, 'success');
+  } else {
+    toast('Canal deshabilitado. Se reflejará en el M3U al guardar.', 'info');
+  }
+}
+
 // ── Save / Export ─────────────────────────────────────────────────────────────
 async function saveM3u() {
   const res = await fetch('/api/save', {
@@ -1406,11 +1472,10 @@ document.addEventListener('keydown', e => {
 
 // ── Descarga M3U de canal individual ─────────────────────────────────────────
 function _streamPillHtml(id) {
-  return `<span class="stream-pill sp-play" id="spill-${id}"
-               title="Descargar M3U · abre en VLC automáticamente"
-               onclick="playChannel(${id})" style="cursor:pointer">
-            <svg style="width:10px;height:10px"><use href="#i-download"/></svg>
-          </span>`;
+  return `<span class="stream-pill sp-idle" id="spill-${id}"
+               title="Sin comprobar · clic para test"
+               onclick="_probeOne(${id}, true, event)"
+               style="cursor:pointer">CHECK</span>`;
 }
 
 function playChannel(id) {
@@ -1419,6 +1484,94 @@ function playChannel(id) {
   window.location.href = `/api/play/${id}`;
   toast(`Descargando M3U de ${ch.channel}…`, 'info');
 }
+
+function _pillView(info) {
+  if (!info || !info.status) {
+    return { cls: 'sp-idle', txt: 'CHECK', title: 'Sin comprobar · clic para test', rowCls: '' };
+  }
+  const st = String(info.status).toLowerCase();
+  const ms = Number(info.latency_ms || 0);
+  const detail = info.detail ? ` · ${info.detail}` : '';
+  if (st === 'busy') return { cls: 'sp-testing', txt: 'TEST', title: 'Otra comprobación en curso', rowCls: '' };
+  if (st === 'testing') return { cls: 'sp-testing', txt: 'TEST', title: 'Probando stream…', rowCls: '' };
+  if (st === 'online' && ms > 3500) return { cls: 'sp-slow', txt: 'ONLINE', title: `Online lento (${ms} ms)${detail}`, rowCls: 'row-online' };
+  if (st === 'online') return { cls: 'sp-online', txt: 'ONLINE', title: `Online (${ms} ms)${detail}`, rowCls: 'row-online' };
+  if (st === 'timeout') return { cls: 'sp-offline', txt: 'OFFLINE', title: `Timeout (${ms} ms)${detail}`, rowCls: 'row-offline' };
+  if (st === 'disabled') return { cls: 'sp-offline', txt: 'OFFLINE', title: 'Canal deshabilitado', rowCls: '' };
+  if (st === 'no_peer') return { cls: 'sp-offline', txt: 'OFFLINE', title: 'Sin peer configurado', rowCls: 'row-offline' };
+  if (st === 'offline') return { cls: 'sp-offline', txt: 'OFFLINE', title: `Offline (${ms} ms)${detail}`, rowCls: 'row-offline' };
+  if (st === 'error') return { cls: 'sp-offline', txt: 'OFFLINE', title: `Error (${ms} ms)${detail}`, rowCls: 'row-offline' };
+  return { cls: 'sp-offline', txt: 'OFFLINE', title: `Estado: ${st}${detail}`, rowCls: 'row-offline' };
+}
+
+function _paintPill(id) {
+  const el = document.getElementById(`spill-${id}`);
+  if (!el) return;
+  const view = _pillView(_streamHealth.get(id));
+  el.className = `stream-pill ${view.cls}`;
+  el.textContent = view.txt;
+  el.title = view.title;
+  const row = document.querySelector(`tr[data-id="${id}"]`);
+  if (row) {
+    row.classList.remove('row-online', 'row-offline', 'row-timeout');
+    if (view.rowCls) row.classList.add(view.rowCls);
+  }
+}
+
+function _paintVisibleStreamPills() {
+  filteredRows.forEach(ch => _paintPill(ch.id));
+}
+
+function _setChecksDisabled(disabled) {
+  _checkInProgress = disabled;
+  document.querySelectorAll('.stream-pill[id^="spill-"]').forEach(el => {
+    el.classList.toggle('disabled', disabled);
+    if (!disabled) return;
+    if (!el.classList.contains('sp-testing')) {
+      el.title = 'Espera: hay otra comprobación en curso';
+    }
+  });
+}
+
+async function _probeOne(id, userTriggered = false, e = null) {
+  if (e) e.stopPropagation();
+  if (_checkInProgress) return;
+  const ch = allChannels.find(c => c.id === id);
+  if (!ch) return;
+  if (!ch.peer_full) {
+    _streamHealth.set(id, { status: 'no_peer', latency_ms: 0, detail: '' });
+    _paintPill(id);
+    if (userTriggered) toast('Ese canal no tiene peer', 'error');
+    return;
+  }
+  _setChecksDisabled(true);
+  _streamHealth.set(id, { status: 'testing' });
+  _paintPill(id);
+  try {
+    const res = await fetch(`/api/test/${id}`);
+    const data = await res.json();
+    _streamHealth.set(id, {
+      status: data.status || 'error',
+      latency_ms: data.latency_ms || 0,
+      detail: data.detail || ''
+    });
+    _paintPill(id);
+    if (userTriggered) {
+      const label = (data.status || 'error').toUpperCase();
+      toast(`${ch.channel}: ${label}`, data.status === 'online' ? 'success' : 'error');
+    }
+    if (data.status === 'busy' && userTriggered) {
+      toast('Ya hay una comprobación en curso', 'info');
+    }
+  } catch (_) {
+    _streamHealth.set(id, { status: 'error', latency_ms: 0, detail: 'network_error' });
+    _paintPill(id);
+    if (userTriggered) toast('Error comprobando stream', 'error');
+  } finally {
+    _setChecksDisabled(false);
+  }
+}
+
 
 // ── Reproductor integrado (MPEG-TS + fallback HLS) ──────────────────────────
 let _mpegtsPlayer = null;

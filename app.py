@@ -10,12 +10,12 @@ import json
 import os
 import re
 import socket
+import threading
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from collections import Counter
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 
 from flask import Flask, Response, jsonify, render_template, request, send_file, stream_with_context
@@ -64,6 +64,7 @@ def ace_base(cfg: dict | None = None) -> str:
 # ── State ─────────────────────────────────────────────────────────────────────
 _channels: list  = []
 _m3u_path: str   = M3U_FILE
+_manual_test_lock = threading.Lock()
 
 app = Flask(__name__)
 
@@ -904,39 +905,25 @@ def api_test_channel(idx: int):
     """Prueba el stream de un canal concreto."""
     if not (0 <= idx < len(_channels)):
         return jsonify({"ok": False, "status": "not_found"}), 404
+    # Modo seguro: solo 1 prueba manual simultánea para no saturar Acexy.
+    if not _manual_test_lock.acquire(blocking=False):
+        return jsonify({"ok": False, "status": "busy", "latency_ms": 0, "detail": "another_check_running"}), 429
     ch   = _channels[idx]
-    peer = ch.get("peer_full", "").strip()
-    if not peer:
-        return jsonify({"ok": False, "status": "no_peer", "latency_ms": 0})
-    url    = f"{ace_base()}{peer}"
-    result = _test_url(url, timeout=6)
-    return jsonify({"ok": True, "id": idx, **result})
+    try:
+        peer = ch.get("peer_full", "").strip()
+        if not peer:
+            return jsonify({"ok": False, "status": "no_peer", "latency_ms": 0})
+        url    = f"{ace_base()}{peer}"
+        result = _test_url(url, timeout=6)
+        return jsonify({"ok": True, "id": idx, **result})
+    finally:
+        _manual_test_lock.release()
 
 
 @app.route("/api/test/batch", methods=["POST"])
 def api_test_batch():
-    """Prueba un lote de IDs en paralelo. Body: {ids: [0,1,2,...]}"""
-    ids = (request.json or {}).get("ids", [])
-    if not ids:
-        return jsonify({"ok": False, "error": "No ids"}), 400
-
-    def test_one(idx):
-        if not (0 <= idx < len(_channels)):
-            return {"id": idx, "status": "not_found", "latency_ms": 0}
-        ch   = _channels[idx]
-        peer = ch.get("peer_full", "").strip()
-        if not peer:
-            return {"id": idx, "status": "no_peer", "latency_ms": 0}
-        url = f"{ace_base()}{peer}"
-        return {"id": idx, **_test_url(url, timeout=6)}
-
-    results = []
-    with ThreadPoolExecutor(max_workers=8) as ex:
-        futures = {ex.submit(test_one, i): i for i in ids}
-        for f in as_completed(futures):
-            results.append(f.result())
-
-    return jsonify({"ok": True, "results": results})
+    """Deshabilitado: solo se permiten pruebas manuales unitarias."""
+    return jsonify({"ok": False, "error": "batch_disabled_use_manual_single_check"}), 410
 
 
 @app.route("/api/config", methods=["GET"])
