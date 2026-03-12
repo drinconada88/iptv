@@ -113,11 +113,11 @@ http://192.168.1.169:8081/ace/getstream?id=50a8a13c474848d1efbd5586efdb5b6cdd173
 #EXTINF:-1 tvg-id="" tvg-logo="" group-title="DAZN",DAZN 1 | ELCANO | 8e62
 http://192.168.1.169:8081/ace/getstream?id=9afc89481b721ce6c326c85e47148676077b8e62
 
-# Fuente: ELCANO  |  Peer: 7884  |  Estado: BACKUP  |  Notas: sync web NEW ERA
+# Fuente: ELCANO  |  Peer: 7884  |  Estado: BACKUP
 #EXTINF:-1 tvg-id="" tvg-logo="" group-title="DAZN",DAZN 1 | ELCANO | 7884
 http://192.168.1.169:8081/ace/getstream?id=a116ce3ff95c41c60e987e2b1aa247007f707884
 
-# Fuente: ELCANO  |  Peer: 363d  |  Estado: BACKUP  |  Notas: sync web NEW ERA
+# Fuente: ELCANO  |  Peer: 363d  |  Estado: BACKUP
 #EXTINF:-1 tvg-id="" tvg-logo="" group-title="DAZN",DAZN 1 | ELCANO | 363d
 http://192.168.1.169:8081/ace/getstream?id=dddff67edfa7061f643ec5ae0be110169850363d
 
@@ -347,7 +347,7 @@ http://192.168.1.169:8081/ace/getstream?id=547ab7146a86d6119c9332c01166954472012
 #EXTINF:-1 tvg-id="" tvg-logo="" group-title="EUROSPORT",EUROSPORT 1 | HD | NEW LOOP | 9321
 http://192.168.1.169:8081/ace/getstream?id=5378c95e982e496a3dafbc4fda57ca37da669321
 
-# Fuente: ELCANO  |  Peer: cfe9  |  Estado: BACKUP  |  Notas: sync web NEW ERA
+# Fuente: ELCANO  |  Peer: cfe9  |  Estado: BACKUP
 #EXTINF:-1 tvg-id="" tvg-logo="" group-title="EUROSPORT",EUROSPORT 1 | ELCANO | cfe9
 http://192.168.1.169:8081/ace/getstream?id=48a589dbeab3544662fafd79888aada7d834cfe9
 
@@ -996,8 +996,8 @@ http://192.168.1.169:8081/ace/getstream?id=22178d72e0f255dedd7e56f9474fea879289a
 # TVG-ID : M+ LaLiga HD
 # Logo   : https://i.ibb.co/yfV1Q8n/liga.png
 
-# Fuente: NEW ERA II | f33y  |  Peer: f33y  |  Estado: MAIN
-#EXTINF:-1 tvg-id="M+ LaLiga HD" tvg-logo="https://i.ibb.co/yfV1Q8n/liga.png" group-title="LA LIGA",M+ LALIGA FHD f33y | NEW ERA II | f33y | f33y
+# Fuente: NEW ERA II | f33y | f33y  |  Peer: f33y  |  Estado: MAIN
+#EXTINF:-1 tvg-id="M+ LaLiga HD" tvg-logo="https://i.ibb.co/yfV1Q8n/liga.png" group-title="LA LIGA",M+ LALIGA FHD f33y | NEW ERA II | f33y | f33y | f33y
 http://192.168.1.169:8081/ace/getstream?id=d4ff041287a43e3114d411d671c4b4e92e21f33y
 
 
@@ -1117,7 +1117,7 @@ http://192.168.1.169:8081/ace/getstream?id=47188da7d2e4beaee82cff174f223fdd23f78
 #EXTINF:-1 tvg-id="" tvg-logo="" group-title="LIGA DE CAMPEONES",LIGA DE CAMPEONES 2 | ELCANO | d615
 http://192.168.1.169:8081/ace/getstream?id=bb26037a253866d341778181eff5c8637240d615
 
-# Fuente: ELCANO  |  Peer: f632  |  Estado: BACKUP  |  Notas: sync web NEW ERA
+# Fuente: ELCANO  |  Peer: f632  |  Estado: BACKUP
 #EXTINF:-1 tvg-id="" tvg-logo="" group-title="LIGA DE CAMPEONES",LIGA DE CAMPEONES 2 | ELCANO | f632
 http://192.168.1.169:8081/ace/getstream?id=8156912ae14f6174a19c8a4efcf36a06e847f632
 
@@ -1165,7 +1165,7 @@ http://192.168.1.169:8081/ace/getstream?id=320bee0fbdf2a168d47810236985a7c40b4f8
 #EXTINF:-1 tvg-id="" tvg-logo="" group-title="LIGA DE CAMPEONES",LIGA DE CAMPEONES 3 | ELCANO | 8de8
 http://192.168.1.169:8081/ace/getstream?id=85a8e0675bc27ddfd403b8f72953c606d07a8de8
 
-# Fuente: ELCANO  |  Peer: 3e4e  |  Estado: BACKUP  |  Notas: sync web NEW ERA
+# Fuente: ELCANO  |  Peer: 3e4e  |  Estado: BACKUP
 #EXTINF:-1 tvg-id="" tvg-logo="" group-title="LIGA DE CAMPEONES",LIGA DE CAMPEONES 3 | ELCANO | 3e4e
 http://192.168.1.169:8081/ace/getstream?id=5b7f54b12e0f96ceba1299f44eac4b0f97403e4e
 
@@ -1286,6 +1286,10 @@ http://192.168.1.169:8081/ace/getstream?id=651dd1e689a9a7d3b0695191dcf44b4d6e754
 # Fuente: NEW ERA III  |  Peer: b2ea  |  Estado: BACKUP
 #EXTINF:-1 tvg-id="DE | Rally TV" tvg-logo="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSsYoLr1q3_h6Jo21AgDZhyK62VNC6EdYRbAg&s" group-title="MOTOR",RALLY TV | NEW ERA III | b2ea
 http://192.168.1.169:8081/ace/getstream?id=8e96e35afd910d1a056dc7bf25139b8e2849b2ea
+
+# Fuente: ELCANO  |  Peer: 53f9  |  Estado: BACKUP  |  Notas: sync web NEW ERA
+#EXTINF:-1 tvg-id="" tvg-logo="" group-title="MOTOR",RALLY TV | ELCANO | 53f9
+http://192.168.1.169:8081/ace/getstream?id=12404b00d2787995d639ccf71a80da5d39d153f9
 
 # ────────── Canal: RETROVISION MOTOR ──────────
 # TVG-ID : 
@@ -1785,11 +1789,11 @@ http://192.168.1.169:8081/ace/getstream?id=0e5d8c9724fa9163f49096b70484e315251eb
 #EXTINF:-1 tvg-id="" tvg-logo="" group-title="MOVISTAR DEPORTES",MOVISTAR VAMOS | ELCANO | a9cf
 http://192.168.1.169:8081/ace/getstream?id=476b6f6583517bd75c15c4663bf45fab7c8da9cf
 
-# Fuente: ELCANO  |  Peer: dc77  |  Estado: BACKUP  |  Notas: sync web NEW ERA
+# Fuente: ELCANO  |  Peer: dc77  |  Estado: BACKUP
 #EXTINF:-1 tvg-id="" tvg-logo="" group-title="MOVISTAR DEPORTES",MOVISTAR VAMOS | ELCANO | dc77
 http://192.168.1.169:8081/ace/getstream?id=866a8af8faacf8fc9eb997ab5a68b4dfee4edc77
 
-# Fuente: ELCANO  |  Peer: 67fc  |  Estado: BACKUP  |  Notas: sync web NEW ERA
+# Fuente: ELCANO  |  Peer: 67fc  |  Estado: BACKUP
 #EXTINF:-1 tvg-id="" tvg-logo="" group-title="MOVISTAR DEPORTES",MOVISTAR VAMOS | ELCANO | 67fc
 http://192.168.1.169:8081/ace/getstream?id=ad5ca6e24f87f47a9c3c5bc10c7e8e5af46767fc
 

@@ -1,0 +1,9 @@
+{
+  "ace_host": "192.168.1.169",
+  "ace_port": "8081",
+  "ace_path": "/ace/getstream?id=",
+  "nas_path": "",
+  "jellyfin_mode": false,
+  "auto_check_enabled": false,
+  "auto_check_minutes": 10.0
+}

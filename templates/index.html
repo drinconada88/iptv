@@ -179,6 +179,35 @@ tbody td { padding: 0 12px; }
 .pill-test     { background: rgba(249,226,175,.15); color: var(--yellow); }
 .pill-disabled { background: rgba(108,112,134,.15); color: var(--ov1); }
 
+/* Stream test pill (segunda burbujita junto al estado) */
+.stream-pill {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 72px; height: 20px; border-radius: 999px; font-size: 10px;
+  font-weight: 700; letter-spacing: .4px; padding: 0 8px;
+  flex-shrink: 0; cursor: pointer; transition: all .15s;
+  border: 1px solid transparent;
+}
+.sp-idle     { background: var(--s1); color: var(--sub1); border-color: rgba(186,194,222,.28); }
+.sp-play     { background: rgba(166,227,161,.12); color: var(--green); font-size: 9px; transition: all .15s; }
+.sp-play:hover { background: rgba(166,227,161,.25); }
+.sp-online   { background: rgba(166,227,161,.22); color: var(--green); border-color: rgba(166,227,161,.45); }
+.sp-slow     { background: rgba(249,226,175,.2); color: var(--yellow); border-color: rgba(249,226,175,.4); }
+.sp-timeout  { background: rgba(250,179,135,.2); color: var(--peach); }
+.sp-offline  { background: rgba(243,139,168,.35); color: #ffd6de; border-color: rgba(243,139,168,.9); }
+.sp-error    { background: rgba(108,112,134,.2); color: var(--ov1); }
+.sp-testing  {
+  background: linear-gradient(110deg,
+    rgba(137,180,250,.12) 8%,
+    rgba(137,180,250,.30) 18%,
+    rgba(137,180,250,.12) 33%);
+  background-size: 200% 100%;
+  color: var(--blue);
+  border-color: rgba(137,180,250,.45);
+  animation: loadingSheen 1.2s ease-in-out infinite;
+}
+.sp-nopeer   { background: var(--s1); color: var(--s2); }
+.stream-pill.disabled { opacity: .45; pointer-events: none; cursor: not-allowed; }
+
 .peer-chip {
   font-family: 'Consolas', monospace; font-size: 12px;
   background: var(--s0); padding: 2px 7px; border-radius: 4px;
@@ -281,9 +310,40 @@ label { font-size: 11px; font-weight: 700; color: var(--ov1); letter-spacing: .8
 /* ─── Loading spinner ────────────────────────────────────────────────────── */
 .spinner { width: 18px; height: 18px; border: 2px solid var(--s1); border-top-color: var(--blue); border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; }
 @keyframes spin { to { transform: rotate(360deg); } }
+@keyframes loadingSheen {
+  0%   { background-position: 200% 0; opacity: .85; }
+  50%  { background-position: 120% 0; opacity: 1; }
+  100% { background-position: 0% 0; opacity: .85; }
+}
+
+/* ─── Proxy widget ───────────────────────────────────────────────────────── */
+.proxy-widget {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--s0); border: 1px solid var(--s1);
+  border-radius: var(--radius); padding: 4px 8px;
+  transition: border-color .15s;
+}
+.proxy-widget:focus-within { border-color: var(--blue); }
+.proxy-input {
+  background: transparent; border: none; color: var(--text);
+  font-size: 13px; font-family: 'Consolas', monospace;
+  width: 120px; min-width: 0;
+}
+.proxy-input:focus { outline: none; color: var(--sky); }
+.proxy-input::placeholder { color: var(--ov0); font-size: 12px; }
+.proxy-port { width: 48px; }
+.proxy-save-btn {
+  background: transparent; color: var(--ov1); border: none;
+  display: flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 4px;
+  cursor: pointer; transition: all .12s; flex-shrink: 0;
+}
+.proxy-save-btn:hover { background: rgba(166,227,161,.2); color: var(--green); }
+.proxy-save-btn.saved { color: var(--green); }
 
 /* ─── Col widths ─────────────────────────────────────────────────────────── */
-.col-status  { width: 90px; }
+.col-drag    { width: 28px; padding: 0 4px !important; }
+.col-status  { width: 120px; }
 .col-channel { min-width: 160px; }
 .col-group   { width: 130px; }
 .col-quality { width: 60px; text-align: center; }
@@ -291,9 +351,206 @@ label { font-size: 11px; font-weight: 700; color: var(--ov1); letter-spacing: .8
 .col-peer    { width: 80px; }
 .col-actions { width: 90px; }
 
+/* ─── Stream test indicators ─────────────────────────────────────────────── */
+.stream-dot {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  flex-shrink: 0; margin-left: 5px; vertical-align: middle;
+  transition: background .3s;
+}
+.stream-online  { background: var(--green); box-shadow: 0 0 5px rgba(166,227,161,.6); }
+.stream-slow    { background: var(--yellow); box-shadow: 0 0 5px rgba(249,226,175,.6); }
+.stream-offline { background: var(--red); }
+.stream-timeout { background: var(--peach); }
+.stream-error   { background: var(--ov0); }
+.stream-testing { background: transparent; border: 2px solid var(--blue); animation: spin .7s linear infinite; }
+.stream-nopeer  { background: var(--s2); }
+
+/* Test todos toolbar */
+#testAllBtn.running { background: rgba(137,180,250,.2); color: var(--blue); }
+.test-progress { font-size:11px; color:var(--ov1); white-space:nowrap; }
+
+/* ─── Drag & drop ────────────────────────────────────────────────────────── */
+.drag-handle {
+  display: flex; align-items: center; justify-content: center;
+  color: var(--s2); cursor: grab; height: var(--row-h);
+  transition: color .12s;
+}
+.drag-handle:hover { color: var(--sub0); }
+tbody tr.dragging { opacity: .35; background: var(--s0); }
+tbody tr.drag-over-top    { box-shadow: inset 0 2px 0 var(--blue); background: rgba(137,180,250,.07); }
+tbody tr.drag-over-bottom { box-shadow: inset 0 -2px 0 var(--blue); background: rgba(137,180,250,.07); }
+/* desactivar sort al arrastrar */
+.dragging-active thead th { cursor: default; pointer-events: none; }
+
 /* highlight search */
 mark { background: rgba(249,226,175,.3); color: var(--yellow); border-radius: 2px; padding: 0 1px; }
+
+/* ─── NAS widget ────────────────────────────────────────────────────────── */
+.nas-widget {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--s0); border: 1px solid var(--s1);
+  border-radius: var(--radius); padding: 4px 8px;
+  transition: border-color .15s;
+}
+.nas-widget:focus-within { border-color: var(--teal); }
+.nas-input {
+  background: transparent; border: none; color: var(--text);
+  font-size: 12px; font-family: 'Consolas', monospace;
+  width: 180px; min-width: 0;
+}
+.nas-input:focus { outline: none; color: var(--teal); }
+.nas-input::placeholder { color: var(--ov0); font-size: 11px; }
+
+/* Toggle Jellyfin mode */
+.jf-toggle {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--s0); border: 1px solid var(--s1);
+  border-radius: var(--radius); padding: 4px 9px;
+  font-size: 11px; color: var(--ov1); cursor: pointer;
+  transition: all .15s; user-select: none; white-space: nowrap;
+}
+.jf-toggle.active { border-color: var(--teal); color: var(--teal); background: rgba(148,226,213,.08); }
+.jf-toggle input[type=checkbox] { accent-color: var(--teal); cursor: pointer; }
+
+/* ─── Bulk select ────────────────────────────────────────────────────────── */
+tbody tr.selected-row { background: rgba(137,180,250,.07); }
+tbody tr.row-online  { box-shadow: inset 3px 0 0 var(--green); }
+tbody tr.row-offline { box-shadow: inset 3px 0 0 var(--red); }
+tbody tr.row-timeout { box-shadow: inset 3px 0 0 var(--peach); }
+
+/* Bulk actions bar */
+#main { position: relative; }
+
+#bulkBar {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: color-mix(in srgb, var(--mantle) 92%, black 8%);
+  border: 1px solid var(--blue);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 24px rgba(0,0,0,.35);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(6px);
+  transition: opacity .14s ease, transform .14s ease;
+}
+#bulkBar.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+#bulkCount { font-size: 12px; color: var(--blue); font-weight: 700; white-space: nowrap; }
+.bulk-group-input {
+  background: var(--s0); border: 1px solid var(--s1); border-radius: 6px;
+  color: var(--text); font-size: 12px; padding: 3px 8px; width: 120px;
+}
+
+/* ─── Player modal ───────────────────────────────────────────────────────── */
+#playerModal .modal { max-width: 780px; }
+#playerVideo { display: block; width: 100%; background: #000; max-height: 440px; }
+.player-footer { padding: 10px 16px; background: var(--crust); border-top: 1px solid var(--s0); display: flex; flex-direction: column; gap: 6px; }
+.player-status { font-size: 12px; min-height: 18px; }
+.player-url-row { display: flex; align-items: center; gap: 8px; }
+.player-url { font-family: 'Consolas', monospace; font-size: 11px; color: var(--sky); word-break: break-all; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ─── Responsive (mobile/tablet) ─────────────────────────────────────────── */
+@media (max-width: 980px) {
+  #app {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto 1fr;
+  }
+
+  #header {
+    padding: 10px 12px;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  #header .sep { display: none; }
+
+  .badge {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+
+  .header-actions {
+    width: 100%;
+    margin-left: 0;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+  .header-actions .btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  #sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--s0);
+    padding: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  .sidebar-title { display: none; }
+  #group-list {
+    display: flex;
+    gap: 6px;
+    min-width: max-content;
+  }
+  .group-item {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 6px 10px;
+  }
+
+  #toolbar {
+    padding: 8px 10px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .search-wrap { flex: 1 1 100%; max-width: none; }
+  #statusFilter { flex: 1 1 48%; min-width: 0; }
+  .toolbar-sep { display: none; }
+  .proxy-widget, .nas-widget { display: none; }
+  #rowCount { margin-left: auto; }
+
+  #table-wrap { overflow: auto; }
+  table { min-width: 640px; }
+
+  /* En móvil priorizamos Estado + Canal + Peer + Acciones */
+  #channelTable th:nth-child(1),
+  #channelTable td:nth-child(1),
+  #channelTable th:nth-child(4),
+  #channelTable td:nth-child(4),
+  #channelTable th:nth-child(5),
+  #channelTable td:nth-child(5),
+  #channelTable th:nth-child(6),
+  #channelTable td:nth-child(6) {
+    display: none;
+  }
+
+  tbody td { padding: 0 8px; }
+  .row-actions { opacity: 1; }
+  .icon-btn { width: 24px; height: 24px; }
+
+  #bulkBar {
+    left: 8px;
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    padding: 7px 9px;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/mpegts.js@latest/dist/mpegts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
 <body>
 
@@ -339,8 +596,25 @@ mark { background: rgba(249,226,175,.3); color: var(--yellow); border-radius: 2p
   <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
     <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
   </symbol>
+  <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+  </symbol>
+  <symbol id="i-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="5 3 19 12 5 21 5 3"/>
+  </symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2"/>
+  </symbol>
+  <symbol id="i-grip" viewBox="0 0 16 16" fill="currentColor">
+    <circle cx="5" cy="4" r="1.2"/><circle cx="5" cy="8" r="1.2"/><circle cx="5" cy="12" r="1.2"/>
+    <circle cx="11" cy="4" r="1.2"/><circle cx="11" cy="8" r="1.2"/><circle cx="11" cy="12" r="1.2"/>
+  </symbol>
   <symbol id="i-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+  </symbol>
+  <symbol id="i-monitor" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
   </symbol>
 </svg>
 
@@ -400,7 +674,55 @@ mark { background: rgba(249,226,175,.3); color: var(--yellow); border-radius: 2p
         <option value="DISABLED">DISABLED</option>
       </select>
       <div class="toolbar-sep"></div>
+      <!-- Proxy AceStream config -->
+      <div class="proxy-widget" title="Proxy AceStream — IP y puerto del servidor local">
+        <svg style="width:13px;height:13px;color:var(--ov1);flex-shrink:0"><use href="#i-link"/></svg>
+        <span style="font-size:11px;color:var(--ov1);white-space:nowrap">Proxy</span>
+        <input id="cfgHost" class="proxy-input" type="text" placeholder="192.168.1.x"
+               title="IP del servidor AceStream">
+        <span style="color:var(--s2);font-size:13px">:</span>
+        <input id="cfgPort" class="proxy-input proxy-port" type="text" placeholder="8081"
+               title="Puerto del servidor AceStream">
+        <button class="proxy-save-btn" id="proxySaveBtn" onclick="saveConfig()" title="Guardar configuración">
+          <svg style="width:12px;height:12px"><use href="#i-check"/></svg>
+        </button>
+      </div>
+      <!-- NAS / Jellyfin config -->
+      <div class="nas-widget" title="Ruta SMB/NAS donde copiar el M3U al guardar (ej: Z:\m3u\lista_iptv.m3u)">
+        <svg style="width:13px;height:13px;color:var(--ov1);flex-shrink:0"><use href="#i-monitor"/></svg>
+        <span style="font-size:11px;color:var(--ov1);white-space:nowrap">NAS</span>
+        <input id="cfgNasPath" class="nas-input" type="text" placeholder="Z:\m3u\lista_iptv.m3u"
+               title="Ruta del fichero M3U en la NAS montada">
+        <button class="proxy-save-btn" id="nasSaveBtn" onclick="saveConfig()" title="Guardar ruta NAS">
+          <svg style="width:12px;height:12px"><use href="#i-check"/></svg>
+        </button>
+      </div>
+      <label class="jf-toggle" id="jfToggle" title="Modo Jellyfin: exporta solo el nombre limpio del canal (sin calidad/fuente/peer)">
+        <input type="checkbox" id="cfgJellyfinMode" onchange="saveConfig()">
+        <svg style="width:12px;height:12px"><use href="#i-tv"/></svg>
+        Jellyfin
+      </label>
+      <button class="btn btn-ghost btn-sm" onclick="selectAllVisible()" title="Seleccionar todas las filas visibles">
+        Seleccionar todo
+      </button>
+      <button class="btn btn-ghost btn-sm" onclick="clearSelection()" title="Quitar toda la selección">
+        Deseleccionar
+      </button>
       <span id="rowCount" class="badge badge-total" style="padding:4px 10px">0 canales</span>
+    </div>
+
+    <!-- Bulk actions bar -->
+    <div id="bulkBar">
+      <span id="bulkCount">0 seleccionados</span>
+      <div style="width:1px;height:16px;background:var(--s1)"></div>
+      <button class="btn btn-ghost btn-sm" onclick="bulkSetStatus('MAIN')">→ MAIN</button>
+      <button class="btn btn-ghost btn-sm" onclick="bulkSetStatus('BACKUP')">→ BACKUP</button>
+      <button class="btn btn-ghost btn-sm" onclick="bulkSetStatus('DISABLED')">→ Deshabilitar</button>
+      <input class="bulk-group-input" id="bulkGroupInput" placeholder="Nuevo grupo…" list="groupSuggestions">
+      <button class="btn btn-ghost btn-sm" onclick="bulkSetGroup()">Cambiar grupo</button>
+      <div style="width:1px;height:16px;background:var(--s1)"></div>
+      <button class="btn btn-danger btn-sm" onclick="bulkDelete()">Eliminar</button>
+      <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="clearSelection()">✕ Deseleccionar</button>
     </div>
 
     <!-- Table -->
@@ -408,6 +730,7 @@ mark { background: rgba(249,226,175,.3); color: var(--yellow); border-radius: 2p
       <table id="channelTable">
         <thead>
           <tr>
+            <th class="col-drag" title="Arrastrar para reordenar"></th>
             <th class="col-status"  data-col="status"  onclick="sortBy('status')">Estado<span class="sort-arrow"></span></th>
             <th class="col-channel" data-col="channel" onclick="sortBy('channel')">Canal<span class="sort-arrow"></span></th>
             <th class="col-group"   data-col="group"   onclick="sortBy('group')">Grupo<span class="sort-arrow"></span></th>
@@ -544,6 +867,37 @@ mark { background: rgba(249,226,175,.3); color: var(--yellow); border-radius: 2p
   </div>
 </div>
 
+<!-- ─── Player Modal ──────────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="playerModal" onclick="closePlayerModal(event)">
+  <div class="modal" style="width:780px;padding:0;overflow:hidden">
+    <div class="modal-header">
+      <span class="modal-title" id="playerTitle">Reproductor</span>
+      <button class="modal-close" onclick="closePlayerModal()">
+        <svg style="width:16px;height:16px"><use href="#i-x"/></svg>
+      </button>
+    </div>
+    <div style="background:#000;line-height:0">
+      <video id="playerVideo" controls playsinline
+             style="width:100%;max-height:440px;display:block"></video>
+    </div>
+    <div class="player-footer">
+      <div id="playerStatus" class="player-status"></div>
+      <div class="player-url-row">
+        <span id="playerUrlLabel" style="font-size:11px;color:var(--ov1);flex-shrink:0">Stream:</span>
+        <span id="playerUrl" class="player-url" title=""></span>
+        <button class="btn btn-ghost btn-sm" onclick="copyPlayerUrl()" style="flex-shrink:0">Copiar URL</button>
+      </div>
+      <div style="font-size:11px;color:var(--ov1);margin-top:2px">
+        Si el vídeo no carga: AceStream Engine debe estar activo en
+        <span id="playerHost" style="color:var(--sky);font-family:Consolas"></span>.
+        Como alternativa, usa el icono
+        <svg style="width:11px;height:11px;vertical-align:middle"><use href="#i-download"/></svg>
+        de la tabla para descargar el M3U y abrirlo directamente en VLC.
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ─── Toasts ────────────────────────────────────────────────────────────── -->
 <div id="toasts"></div>
 
@@ -556,9 +910,63 @@ let activeGroup   = '__ALL__';
 let sortCol       = null;
 let sortDir       = 1;
 let m3uPath       = '';
+let _streamHealth = new Map();
+let _checkInProgress = false;
+
+// ── Config ────────────────────────────────────────────────────────────────────
+let _aceBase = 'http://192.168.1.169:8081/ace/getstream?id=';
+
+async function loadConfig() {
+  const res = await fetch('/api/config');
+  const cfg = await res.json();
+  document.getElementById('cfgHost').value = cfg.ace_host || '';
+  document.getElementById('cfgPort').value = cfg.ace_port || '';
+  document.getElementById('cfgNasPath').value = cfg.nas_path || '';
+  const jfCb = document.getElementById('cfgJellyfinMode');
+  jfCb.checked = !!cfg.jellyfin_mode;
+  document.getElementById('jfToggle').classList.toggle('active', !!cfg.jellyfin_mode);
+  _aceBase = `http://${cfg.ace_host}:${cfg.ace_port}${cfg.ace_path}`;
+}
+
+async function saveConfig() {
+  const host    = document.getElementById('cfgHost').value.trim();
+  const port    = document.getElementById('cfgPort').value.trim();
+  const nasPath = document.getElementById('cfgNasPath').value.trim();
+  const jfMode  = document.getElementById('cfgJellyfinMode').checked;
+  if (!host || !port) { toast('Introduce IP y puerto', 'error'); return; }
+
+  const res = await fetch('/api/config', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ ace_host: host, ace_port: port,
+                           nas_path: nasPath, jellyfin_mode: jfMode })
+  });
+  const r = await res.json();
+  if (r.ok) {
+    _aceBase = r.ace_base;
+    document.getElementById('jfToggle').classList.toggle('active', jfMode);
+    [document.getElementById('proxySaveBtn'), document.getElementById('nasSaveBtn')]
+      .forEach(btn => { btn.classList.add('saved'); setTimeout(() => btn.classList.remove('saved'), 2000); });
+    const jfTxt = jfMode ? ' · Modo Jellyfin ON' : '';
+    const nasTxt = nasPath ? ` · NAS: ${nasPath}` : '';
+    toast(`Config guardada${jfTxt}${nasTxt}`, 'success');
+  } else {
+    toast('Error guardando configuración', 'error');
+  }
+}
+
+// Guardar al pulsar Enter en los campos
+document.addEventListener('DOMContentLoaded', () => {
+  ['cfgHost','cfgPort','cfgNasPath'].forEach(id => {
+    document.getElementById(id)?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') saveConfig();
+    });
+  });
+  document.getElementById('editPeer').addEventListener('input', updatePeerMeta);
+});
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 async function init() {
+  await loadConfig();
   await loadChannels();
   await loadStats();
 }
@@ -566,6 +974,11 @@ async function init() {
 async function loadChannels() {
   const res  = await fetch('/api/channels');
   allChannels = await res.json();
+  // Limpia cache de health para canales eliminados
+  const alive = new Set(allChannels.map(c => c.id));
+  for (const id of Array.from(_streamHealth.keys())) {
+    if (!alive.has(id)) _streamHealth.delete(id);
+  }
   applyFilters();
 }
 
@@ -677,17 +1090,20 @@ function renderTable(rows, q = '') {
   }
   empty.style.display = 'none';
 
-  tbody.innerHTML = rows.map(ch => {
-    const ps  = ch.peer_full ? ch.peer_full.slice(-4) : '—';
-    const dot = STATUS_DOT[ch.status]  || 'dot-disabled';
-    const pill= STATUS_PILL[ch.status] || 'pill-disabled';
-    const dis = ch.status === 'DISABLED' ? ' disabled-row' : '';
-    return `<tr class="${dis}" data-id="${ch.id}">
-      <td class="col-status">
-        <span class="status-pill ${pill}">
-          <span class="status-dot ${dot}"></span>
-          ${ch.status}
-        </span>
+    tbody.innerHTML = rows.map(ch => {
+    const ps      = ch.peer_full ? ch.peer_full.slice(-4) : '—';
+    const pill    = STATUS_PILL[ch.status] || 'pill-disabled';
+    const dis     = ch.status === 'DISABLED' ? ' disabled-row' : '';
+    const selCls  = _selectedIds.has(ch.id) ? ' selected-row' : '';
+    return `<tr class="${dis}${selCls}" data-id="${ch.id}" draggable="true">
+      <td class="col-drag">
+        <div class="drag-handle" title="Arrastrar para reordenar">
+          <svg style="width:14px;height:14px"><use href="#i-grip"/></svg>
+        </div>
+      </td>
+      <td class="col-status" style="white-space:nowrap">
+        <span class="status-pill ${pill}">${ch.status}</span>
+        ${_streamPillHtml(ch.id)}
       </td>
       <td class="col-channel" style="font-weight:600">${hl(ch.channel, q)}</td>
       <td class="col-group" style="color:var(--sub0)">${hl(ch.group, q)}</td>
@@ -697,12 +1113,29 @@ function renderTable(rows, q = '') {
       <td class="col-actions">
         <div class="row-actions">
           <button class="icon-btn" title="Editar" onclick="openEdit(${ch.id})"><svg><use href="#i-edit"/></svg></button>
+          ${ch.peer_full ? `<button class="icon-btn" title="Ver en reproductor integrado" onclick="openPlayer(${ch.id})"><svg><use href="#i-monitor"/></svg></button>` : ''}
+          ${ch.status !== 'DISABLED'
+            ? `<button class="icon-btn danger" title="Deshabilitar canal (quedará comentado en el M3U)" onclick="toggleChannelEnabled(${ch.id}, false)"><svg><use href="#i-stop"/></svg></button>`
+            : `<button class="icon-btn" title="Habilitar canal (volverá como TEST)" onclick="toggleChannelEnabled(${ch.id}, true)"><svg><use href="#i-check"/></svg></button>`
+          }
           <button class="icon-btn" title="Duplicar como BACKUP" onclick="duplicateChannel(${ch.id})"><svg><use href="#i-copy"/></svg></button>
           <button class="icon-btn danger" title="Eliminar" onclick="confirmDelete(${ch.id})"><svg><use href="#i-trash"/></svg></button>
         </div>
       </td>
     </tr>`;
   }).join('');
+
+  tbody.querySelectorAll('tr').forEach(row => {
+    row.addEventListener('click', e => {
+      if (e.target.closest('button') || e.target.closest('.drag-handle')) return;
+      const id = parseInt(row.dataset.id, 10);
+      toggleRowSelect(id);
+    });
+  });
+
+  // Registrar eventos drag & drop en las filas recién renderizadas
+  initDragDrop();
+  _paintVisibleStreamPills();
 }
 
 // ── Create modal ──────────────────────────────────────────────────────────────
@@ -769,9 +1202,6 @@ function updatePeerMeta() {
     Sufijo (últimos 4): <b style="font-family:Consolas;color:var(--sky)">${v.slice(-4)}</b>&nbsp;&nbsp;·&nbsp;&nbsp;
     URL: <span style="font-size:10px;color:var(--ov0)">http://…/ace/getstream?id=${v}</span>`;
 }
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('editPeer').addEventListener('input', updatePeerMeta);
-});
 
 function closeEditModal() {
   document.getElementById('editModal').classList.remove('open');
@@ -865,9 +1295,43 @@ async function deleteChannel(id) {
   }
 }
 
+async function toggleChannelEnabled(id, enable) {
+  const ch = allChannels.find(c => c.id === id);
+  if (!ch) return;
+
+  const currentHealth = _streamHealth.get(id)?.status || '';
+  if (!enable && String(currentHealth).toLowerCase() === 'online') {
+    const ok = confirm(`"${ch.channel}" aparece ONLINE. ¿Seguro que quieres deshabilitarlo?`);
+    if (!ok) return;
+  }
+
+  const nextStatus = enable ? 'TEST' : 'DISABLED';
+  const res = await fetch(`/api/channel/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: nextStatus })
+  });
+  const r = await res.json();
+  if (!r.ok) {
+    toast('No se pudo actualizar el estado del canal', 'error');
+    return;
+  }
+
+  const idx = allChannels.findIndex(c => c.id === id);
+  if (idx !== -1) allChannels[idx] = r.channel;
+  applyFilters();
+  loadStats();
+
+  if (enable) {
+    toast(`Canal habilitado como TEST. Si va bien, puedes pasarlo a MAIN/BACKUP.`, 'success');
+  } else {
+    toast('Canal deshabilitado. Se reflejará en el M3U al guardar.', 'info');
+  }
+}
+
 // ── Save / Export ─────────────────────────────────────────────────────────────
 async function saveM3u() {
-  const res  = await fetch('/api/save', {
+  const res = await fetch('/api/save', {
     method: 'POST', headers: {'Content-Type':'application/json'},
     body: JSON.stringify({ path: m3uPath })
   });
@@ -875,6 +1339,10 @@ async function saveM3u() {
   if (r.ok) {
     const s = r.stats;
     toast(`M3U guardado · ${s.MAIN} main, ${s.BACKUP} backup, ${s.DISABLED} disabled`, 'success');
+    if (r.nas) {
+      if (r.nas.ok) toast(`NAS actualizada · ${r.nas.path}`, 'success');
+      else          toast(`Error al escribir en NAS: ${r.nas.error}`, 'error');
+    }
     loadStats();
   } else {
     toast('Error al guardar el fichero', 'error');
@@ -884,6 +1352,98 @@ async function saveM3u() {
 function exportM3u() {
   window.location.href = '/api/export';
   toast('Descargando lista M3U…', 'info');
+}
+
+// ── Multi-select & bulk actions ───────────────────────────────────────────────
+let _selectedIds = new Set();
+
+function toggleRowSelect(id, checked) {
+  const next = typeof checked === 'boolean' ? checked : !_selectedIds.has(id);
+  if (next) _selectedIds.add(id);
+  else      _selectedIds.delete(id);
+  _updateBulkBar();
+  const row = document.querySelector(`tr[data-id="${id}"]`);
+  if (row) row.classList.toggle('selected-row', next);
+}
+
+function toggleSelectAll(checked) {
+  filteredRows.forEach(ch => {
+    if (checked) _selectedIds.add(ch.id);
+    else         _selectedIds.delete(ch.id);
+  });
+  document.querySelectorAll('tbody tr').forEach(tr => tr.classList.toggle('selected-row', checked));
+  _updateBulkBar();
+}
+
+function selectAllVisible() {
+  toggleSelectAll(true);
+}
+
+function clearSelection() {
+  _selectedIds.clear();
+  document.querySelectorAll('tbody tr').forEach(tr => tr.classList.remove('selected-row'));
+  _updateBulkBar();
+}
+
+function _updateBulkBar() {
+  const n   = _selectedIds.size;
+  const bar = document.getElementById('bulkBar');
+  bar.classList.toggle('visible', n > 0);
+  document.getElementById('bulkCount').textContent = `${n} seleccionado${n !== 1 ? 's' : ''}`;
+}
+
+async function bulkSetStatus(status) {
+  if (!_selectedIds.size) return;
+  const ids = [..._selectedIds];
+  await Promise.all(ids.map(id => {
+    const ch = allChannels.find(c => c.id === id);
+    if (!ch) return;
+    return fetch(`/api/channel/${id}`, {
+      method: 'PUT', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ ...ch, status })
+    });
+  }));
+  await loadChannels();
+  // Restaurar selección visual
+  ids.forEach(id => {
+    _selectedIds.add(id);
+    const row = document.querySelector(`tr[data-id="${id}"]`);
+    if (row) row.classList.add('selected-row');
+  });
+  _updateBulkBar();
+  toast(`${ids.length} canales → ${status}`, 'success');
+}
+
+async function bulkSetGroup() {
+  const group = document.getElementById('bulkGroupInput').value.trim();
+  if (!group || !_selectedIds.size) return;
+  const ids = [..._selectedIds];
+  await Promise.all(ids.map(id => {
+    const ch = allChannels.find(c => c.id === id);
+    if (!ch) return;
+    return fetch(`/api/channel/${id}`, {
+      method: 'PUT', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ ...ch, group })
+    });
+  }));
+  await loadChannels();
+  document.getElementById('bulkGroupInput').value = '';
+  clearSelection();
+  toast(`${ids.length} canales → grupo "${group}"`, 'success');
+}
+
+async function bulkDelete() {
+  const n = _selectedIds.size;
+  if (!n) return;
+  if (!confirm(`¿Eliminar ${n} canales seleccionados?`)) return;
+  const ids = [..._selectedIds];
+  await Promise.all(ids.map(id => fetch(`/api/channel/${id}`, { method: 'DELETE' })));
+  allChannels = allChannels.filter(c => !ids.includes(c.id));
+  allChannels.forEach((c, i) => c.id = i);
+  _selectedIds.clear();
+  applyFilters();
+  loadStats();
+  toast(`${n} canales eliminados`, 'success');
 }
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
@@ -909,6 +1469,420 @@ document.addEventListener('keydown', e => {
     document.getElementById('searchInput').focus();
   }
 });
+
+// ── Descarga M3U de canal individual ─────────────────────────────────────────
+function _streamPillHtml(id) {
+  return `<span class="stream-pill sp-idle" id="spill-${id}"
+               title="Sin comprobar · clic para test"
+               onclick="_probeOne(${id}, true, event)"
+               style="cursor:pointer">CHECK</span>`;
+}
+
+function playChannel(id) {
+  const ch = allChannels.find(c => c.id === id);
+  if (!ch) return;
+  window.location.href = `/api/play/${id}`;
+  toast(`Descargando M3U de ${ch.channel}…`, 'info');
+}
+
+function _pillView(info) {
+  if (!info || !info.status) {
+    return { cls: 'sp-idle', txt: 'CHECK', title: 'Sin comprobar · clic para test', rowCls: '' };
+  }
+  const st = String(info.status).toLowerCase();
+  const ms = Number(info.latency_ms || 0);
+  const detail = info.detail ? ` · ${info.detail}` : '';
+  if (st === 'busy') return { cls: 'sp-testing', txt: 'TEST', title: 'Otra comprobación en curso', rowCls: '' };
+  if (st === 'testing') return { cls: 'sp-testing', txt: 'TEST', title: 'Probando stream…', rowCls: '' };
+  if (st === 'online' && ms > 3500) return { cls: 'sp-slow', txt: 'ONLINE', title: `Online lento (${ms} ms)${detail}`, rowCls: 'row-online' };
+  if (st === 'online') return { cls: 'sp-online', txt: 'ONLINE', title: `Online (${ms} ms)${detail}`, rowCls: 'row-online' };
+  if (st === 'timeout') return { cls: 'sp-offline', txt: 'OFFLINE', title: `Timeout (${ms} ms)${detail}`, rowCls: 'row-offline' };
+  if (st === 'disabled') return { cls: 'sp-offline', txt: 'OFFLINE', title: 'Canal deshabilitado', rowCls: '' };
+  if (st === 'no_peer') return { cls: 'sp-offline', txt: 'OFFLINE', title: 'Sin peer configurado', rowCls: 'row-offline' };
+  if (st === 'offline') return { cls: 'sp-offline', txt: 'OFFLINE', title: `Offline (${ms} ms)${detail}`, rowCls: 'row-offline' };
+  if (st === 'error') return { cls: 'sp-offline', txt: 'OFFLINE', title: `Error (${ms} ms)${detail}`, rowCls: 'row-offline' };
+  return { cls: 'sp-offline', txt: 'OFFLINE', title: `Estado: ${st}${detail}`, rowCls: 'row-offline' };
+}
+
+function _paintPill(id) {
+  const el = document.getElementById(`spill-${id}`);
+  if (!el) return;
+  const view = _pillView(_streamHealth.get(id));
+  el.className = `stream-pill ${view.cls}`;
+  el.textContent = view.txt;
+  el.title = view.title;
+  const row = document.querySelector(`tr[data-id="${id}"]`);
+  if (row) {
+    row.classList.remove('row-online', 'row-offline', 'row-timeout');
+    if (view.rowCls) row.classList.add(view.rowCls);
+  }
+}
+
+function _paintVisibleStreamPills() {
+  filteredRows.forEach(ch => _paintPill(ch.id));
+}
+
+function _setChecksDisabled(disabled) {
+  _checkInProgress = disabled;
+  document.querySelectorAll('.stream-pill[id^="spill-"]').forEach(el => {
+    el.classList.toggle('disabled', disabled);
+    if (!disabled) return;
+    if (!el.classList.contains('sp-testing')) {
+      el.title = 'Espera: hay otra comprobación en curso';
+    }
+  });
+}
+
+async function _probeOne(id, userTriggered = false, e = null) {
+  if (e) e.stopPropagation();
+  if (_checkInProgress) return;
+  const ch = allChannels.find(c => c.id === id);
+  if (!ch) return;
+  if (!ch.peer_full) {
+    _streamHealth.set(id, { status: 'no_peer', latency_ms: 0, detail: '' });
+    _paintPill(id);
+    if (userTriggered) toast('Ese canal no tiene peer', 'error');
+    return;
+  }
+  _setChecksDisabled(true);
+  _streamHealth.set(id, { status: 'testing' });
+  _paintPill(id);
+  try {
+    const res = await fetch(`/api/test/${id}`);
+    const data = await res.json();
+    _streamHealth.set(id, {
+      status: data.status || 'error',
+      latency_ms: data.latency_ms || 0,
+      detail: data.detail || ''
+    });
+    _paintPill(id);
+    if (userTriggered) {
+      const label = (data.status || 'error').toUpperCase();
+      toast(`${ch.channel}: ${label}`, data.status === 'online' ? 'success' : 'error');
+    }
+    if (data.status === 'busy' && userTriggered) {
+      toast('Ya hay una comprobación en curso', 'info');
+    }
+  } catch (_) {
+    _streamHealth.set(id, { status: 'error', latency_ms: 0, detail: 'network_error' });
+    _paintPill(id);
+    if (userTriggered) toast('Error comprobando stream', 'error');
+  } finally {
+    _setChecksDisabled(false);
+  }
+}
+
+
+// ── Reproductor integrado (MPEG-TS + fallback HLS) ──────────────────────────
+let _mpegtsPlayer = null;
+let _hlsPlayer = null;
+let _playerStreamUrl = '';
+// En algunas instalaciones de Acexy no existe /ace/manifest.m3u8 (404),
+// así que el fallback HLS debe estar desactivado para no romper el play.
+const ENABLE_HLS_FALLBACK = false;
+
+function _setPlayerStatus(html) {
+  document.getElementById('playerStatus').innerHTML = html;
+}
+
+function _setPlayerUrl(label, url) {
+  const labelEl = document.getElementById('playerUrlLabel');
+  const urlEl = document.getElementById('playerUrl');
+  labelEl.textContent = label;
+  urlEl.textContent = url;
+  urlEl.title = url;
+  _playerStreamUrl = url;
+}
+
+function openPlayer(id) {
+  const ch = allChannels.find(c => c.id === id);
+  if (!ch || !ch.peer_full) return;
+
+  const aceUrl = _aceBase + ch.peer_full;
+  const tsUrl = `/api/stream/${id}`;
+  const hlsUrl = `/api/hls/${id}`;
+  const tsUrlAbs = new URL(tsUrl, window.location.origin).href;
+  const hlsUrlAbs = new URL(hlsUrl, window.location.origin).href;
+
+  document.getElementById('playerTitle').textContent = '▶  ' + ch.channel;
+  document.getElementById('playerHost').textContent =
+    _aceBase.match(/https?:\/\/([^/]+)/)?.[1] || '…';
+  _setPlayerStatus('<span style="color:var(--blue)">Iniciando stream en Acexy… (puede tardar hasta 30 s)</span>');
+
+  _destroyPlayer();
+  document.getElementById('playerModal').classList.add('open');
+
+  _startMpegtsWithFallback({
+    tsUrl,
+    hlsUrl,
+    tsUrlAbs,
+    hlsUrlAbs,
+    aceUrl,
+  });
+}
+
+function _startMpegtsWithFallback(ctx) {
+  const video = document.getElementById('playerVideo');
+  let switchedToHls = false;
+
+  const fallbackToHls = (reason = '') => {
+    if (!ENABLE_HLS_FALLBACK) {
+      _setPlayerStatus(
+        `<span style="color:var(--red)">✗ Error MPEG-TS: ${escHtml(reason || 'desconocido')}</span>` +
+        '<span style="color:var(--ov1);margin-left:8px;font-size:11px">HLS no disponible en este Acexy (manifest 404)</span>'
+      );
+      return;
+    }
+    if (switchedToHls) return;
+    switchedToHls = true;
+    _destroyMpegtsOnly();
+    const reasonTxt = reason ? ` (${reason})` : '';
+    _setPlayerStatus(`<span style="color:var(--yellow)">MPEG-TS no disponible${reasonTxt}. Probando fallback HLS…</span>`);
+    _setPlayerUrl('HLS proxy:', ctx.hlsUrlAbs);
+    _startHls(ctx.hlsUrl, ctx.aceUrl);
+  };
+
+  if (typeof mpegts === 'undefined') {
+    fallbackToHls('mpegts.js no cargado');
+    return;
+  }
+
+  _setPlayerUrl('TS proxy:', ctx.tsUrlAbs);
+
+  let startupTimer = setTimeout(() => {
+    fallbackToHls('timeout inicial');
+  }, 45000);
+
+  try {
+    _mpegtsPlayer = mpegts.createPlayer({
+      type: 'mpegts',
+      isLive: true,
+      url: ctx.tsUrl,
+    }, {
+      // Menos agresivo y más compatible en Windows/Chrome con streams Acexy.
+      enableWorker: false,
+      enableStashBuffer: false,
+      liveBufferLatencyChasing: true,
+      liveBufferLatencyMaxLatency: 8,
+      liveBufferLatencyMinRemain: 2,
+    });
+
+    _mpegtsPlayer.attachMediaElement(video);
+    _mpegtsPlayer.load();
+
+    _mpegtsPlayer.on(mpegts.Events.MEDIA_INFO, () => {
+      clearTimeout(startupTimer);
+      _setPlayerStatus('<span style="color:var(--green)">✓ Stream conectado por MPEG-TS · reproduciendo</span>');
+      video.play().catch(() => {});
+    });
+
+    _mpegtsPlayer.on(mpegts.Events.ERROR, (errType, errDetail) => {
+      clearTimeout(startupTimer);
+      fallbackToHls(`${errType} — ${errDetail}`);
+    });
+
+    _mpegtsPlayer.on(mpegts.Events.LOADING_COMPLETE, () => {
+      _setPlayerStatus('<span style="color:var(--yellow)">Fin de stream recibido desde proxy</span>');
+    });
+  } catch (e) {
+    clearTimeout(startupTimer);
+    fallbackToHls(e?.message || 'error interno');
+  }
+}
+
+function _startHls(hlsUrl, aceUrl) {
+  const video = document.getElementById('playerVideo');
+  let networkRetries = 0;
+  const maxNetworkRetries = 5;
+
+  if (window.Hls && Hls.isSupported()) {
+    _hlsPlayer = new Hls({
+      enableWorker: true,
+      lowLatencyMode: true,
+      backBufferLength: 30,
+      maxBufferLength: 15,
+    });
+
+    _hlsPlayer.loadSource(hlsUrl);
+    _hlsPlayer.attachMedia(video);
+
+    _hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => {
+      _setPlayerStatus('<span style="color:var(--green)">✓ Stream conectado por HLS · reproduciendo</span>');
+      video.play().catch(() => {});
+    });
+
+    _hlsPlayer.on(Hls.Events.ERROR, (_, data) => {
+      if (!data?.fatal) return;
+      if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+        networkRetries += 1;
+        if (networkRetries <= maxNetworkRetries) {
+          _setPlayerStatus(`<span style="color:var(--peach)">Error de red HLS. Reintentando… (${networkRetries}/${maxNetworkRetries})</span>`);
+          _hlsPlayer.startLoad();
+          return;
+        }
+        _setPlayerStatus(
+          '<span style="color:var(--red)">✗ Error de red HLS persistente</span>' +
+          `<span style="color:var(--ov1);margin-left:8px;font-size:11px">Revisa AceStream en ${aceUrl}</span>`
+        );
+        _destroyHlsOnly();
+        return;
+      }
+      if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+        _setPlayerStatus('<span style="color:var(--peach)">Error de media HLS. Recuperando…</span>');
+        _hlsPlayer.recoverMediaError();
+        return;
+      }
+      _setPlayerStatus(
+        `<span style="color:var(--red)">✗ Error HLS fatal: ${data.type || 'desconocido'}</span>` +
+        `<span style="color:var(--ov1);margin-left:8px;font-size:11px">¿AceStream activo en ${aceUrl}?</span>`
+      );
+      _destroyHlsOnly();
+    });
+    return;
+  }
+
+  if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    video.src = hlsUrl;
+    video.addEventListener('loadedmetadata', () => {
+      _setPlayerStatus('<span style="color:var(--green)">✓ Stream conectado por HLS nativo · reproduciendo</span>');
+      video.play().catch(() => {});
+    }, { once: true });
+    video.addEventListener('error', () => {
+      _setPlayerStatus('<span style="color:var(--red)">✗ Error reproduciendo HLS nativo</span>');
+    }, { once: true });
+    return;
+  }
+
+  _setPlayerStatus('<span style="color:var(--red)">✗ Este navegador no soporta reproducción HLS</span>');
+}
+
+function _destroyMpegtsOnly() {
+  if (_mpegtsPlayer) {
+    _mpegtsPlayer.destroy();
+    _mpegtsPlayer = null;
+  }
+}
+
+function _destroyHlsOnly() {
+  if (_hlsPlayer) {
+    _hlsPlayer.destroy();
+    _hlsPlayer = null;
+  }
+}
+
+function _destroyPlayer() {
+  _destroyMpegtsOnly();
+  _destroyHlsOnly();
+  const video = document.getElementById('playerVideo');
+  if (video) {
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+  }
+}
+
+function closePlayerModal(e) {
+  if (e && e.target !== document.getElementById('playerModal')) return;
+  document.getElementById('playerModal').classList.remove('open');
+  _destroyPlayer();
+}
+
+function copyPlayerUrl() {
+  navigator.clipboard.writeText(_playerStreamUrl)
+    .then(() => toast('URL copiada al portapapeles', 'success'))
+    .catch(() => toast('No se pudo copiar', 'error'));
+}
+
+// ── Drag & Drop ───────────────────────────────────────────────────────────────
+let _dragSrcId   = null;
+let _reorderTimer = null;
+
+function initDragDrop() {
+  const tbody = document.getElementById('channelBody');
+
+  tbody.querySelectorAll('tr[draggable]').forEach(row => {
+    row.addEventListener('dragstart', e => {
+      _dragSrcId = parseInt(row.dataset.id);
+      row.classList.add('dragging');
+      document.getElementById('channelTable').classList.add('dragging-active');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', _dragSrcId);
+    });
+
+    row.addEventListener('dragend', () => {
+      row.classList.remove('dragging');
+      document.getElementById('channelTable').classList.remove('dragging-active');
+      tbody.querySelectorAll('tr').forEach(r => {
+        r.classList.remove('drag-over-top', 'drag-over-bottom');
+      });
+    });
+
+    row.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const rect   = row.getBoundingClientRect();
+      const midY   = rect.top + rect.height / 2;
+      const isTop  = e.clientY < midY;
+      row.classList.toggle('drag-over-top',    isTop);
+      row.classList.toggle('drag-over-bottom', !isTop);
+    });
+
+    row.addEventListener('dragleave', e => {
+      // Solo quitar si realmente salimos de la fila
+      if (!row.contains(e.relatedTarget)) {
+        row.classList.remove('drag-over-top', 'drag-over-bottom');
+      }
+    });
+
+    row.addEventListener('drop', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const targetId = parseInt(row.dataset.id);
+      if (_dragSrcId === null || _dragSrcId === targetId) return;
+
+      const rect  = row.getBoundingClientRect();
+      const after = e.clientY >= rect.top + rect.height / 2;
+
+      // Encontrar posiciones en filteredRows
+      const srcIdx = filteredRows.findIndex(c => c.id === _dragSrcId);
+      let   tgtIdx = filteredRows.findIndex(c => c.id === targetId);
+      if (srcIdx === -1 || tgtIdx === -1) return;
+
+      // Mover en filteredRows
+      const [moved] = filteredRows.splice(srcIdx, 1);
+      tgtIdx = filteredRows.findIndex(c => c.id === targetId);
+      filteredRows.splice(after ? tgtIdx + 1 : tgtIdx, 0, moved);
+
+      // Propagar el nuevo orden al array global allChannels
+      // (reemplazamos las posiciones que ocupaban los filteredRows)
+      const slots = allChannels
+        .map((c, i) => ({ c, i }))
+        .filter(x => filteredRows.some(fr => fr.id === x.c.id))
+        .map(x => x.i)
+        .sort((a, b) => a - b);
+      filteredRows.forEach((fr, idx) => { allChannels[slots[idx]] = fr; });
+
+      // Resetear sort visual (el usuario impone orden manual)
+      sortCol = null;
+      document.querySelectorAll('thead th').forEach(th => th.classList.remove('sort-asc', 'sort-desc'));
+
+      // Re-render inmediato
+      const q = document.getElementById('searchInput').value.trim().toLowerCase();
+      renderTable(filteredRows, q);
+
+      // Enviar al backend con debounce (evita llamadas en cada micro-movimiento)
+      clearTimeout(_reorderTimer);
+      _reorderTimer = setTimeout(async () => {
+        await fetch('/api/reorder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order: allChannels.map(c => c.id) }),
+        });
+        toast('Orden guardado', 'info');
+      }, 600);
+    });
+  });
+}
 
 // ── Sync web ──────────────────────────────────────────────────────────────────
 async function syncWeb() {
