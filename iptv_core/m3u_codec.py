@@ -51,17 +51,24 @@ def load_m3u(path: str) -> list:
                 pending_status = m.group(1).upper()
             continue
 
-        if not line.startswith("#EXTINF"):
+        is_commented_extinf = False
+        extinf = line
+        if line.startswith("#EXTINF"):
+            pass
+        elif re.match(r"^#\s*#EXTINF", line):
+            # Disabled entries are persisted as commented EXTINF lines.
+            is_commented_extinf = True
+            extinf = re.sub(r"^#\s*", "", line, count=1)
+        else:
             continue
 
-        extinf = line
         j = i + 1
         while j < len(lines) and not lines[j].strip():
             j += 1
         url_raw = lines[j] if j < len(lines) else ""
 
-        is_disabled = url_raw.startswith("# ") or url_raw.startswith("#http")
-        url = url_raw.lstrip("# ") if is_disabled else url_raw
+        is_disabled = is_commented_extinf or url_raw.startswith("# ") or url_raw.startswith("#http")
+        url = re.sub(r"^#\s*", "", url_raw, count=1) if url_raw.startswith("#") else url_raw
         peer_full = url.split("?id=", 1)[-1].strip() if "?id=" in url else ""
 
         raw = re.search(r",\s*(.+)$", extinf)
@@ -71,13 +78,15 @@ def load_m3u(path: str) -> list:
         group = attr(extinf, "group-title")
         key = (group, channel)
 
+        role_status = "MAIN" if key not in seen else "BACKUP"
+        enabled = not is_disabled
+
         if pending_status:
-            status = pending_status
+            if pending_status in STATUSES:
+                role_status = pending_status
+            elif pending_status == "DISABLED":
+                enabled = False
             pending_status = None
-        elif is_disabled:
-            status = "DISABLED"
-        else:
-            status = "MAIN" if key not in seen else "BACKUP"
         seen.add(key)
 
         channels.append(
@@ -90,7 +99,8 @@ def load_m3u(path: str) -> list:
                 "peer_full": peer_full,
                 "tvg_id": attr(extinf, "tvg-id"),
                 "tvg_logo": attr(extinf, "tvg-logo"),
-                "status": status,
+                "status": role_status,
+                "enabled": enabled,
                 "notes": "",
             }
         )
@@ -118,6 +128,9 @@ def write_m3u(
     cur_group = cur_channel = None
     for ch in chans:
         status = ch.get("status", "MAIN").upper()
+        enabled = bool(ch.get("enabled", status != "DISABLED"))
+        if status == "DISABLED":
+            status = "BACKUP"
         group = ch.get("group", "")
         channel = ch.get("channel", "")
         quality = ch.get("quality", "")
@@ -150,6 +163,8 @@ def write_m3u(
         if ps:
             meta.append(f"Peer: {ps}")
         meta.append(f"Estado: {status}")
+        if not enabled:
+            meta.append("Salud: DISABLED")
         if notes:
             meta.append(f"Notas: {notes}")
         out.append("# " + "  |  ".join(meta))
@@ -169,7 +184,7 @@ def write_m3u(
         extinf = f'#EXTINF:-1 tvg-id="{tvg_id}" tvg-logo="{tvg_logo}" group-title="{group}",{display}'
         url = f"{ace_base_url}{peer}"
 
-        if status == "DISABLED":
+        if not enabled:
             out += ["# DISABLED", f"# {extinf}", f"# {url}", ""]
         else:
             out += [extinf, url, ""]

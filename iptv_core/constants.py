@@ -33,7 +33,7 @@ EPG_URL = (
 )
 
 # ── Channel metadata ──────────────────────────────────────────────────────────
-STATUSES = ["MAIN", "BACKUP", "TEST", "DISABLED"]
+STATUSES = ["MAIN", "BACKUP", "TEST"]
 QUALITY_SET = {"FHD", "HD", "SD", "4K"}
 STATUS_ORDER = {s: i for i, s in enumerate(STATUSES)}
 
@@ -47,4 +47,49 @@ DEFAULT_CFG = {
     "auto_check_minutes": 2.0,
     "auto_check_batch_size": 8,
     "auto_check_timeout_sec": 4,
+    "sync_sources": [
+        {
+            "id": "new_era",
+            "name": "NEW ERA",
+            "enabled": True,
+            "parser": "new_era",
+            "url": (
+                "https://ipfs.io/ipns/"
+                "k2k4r8oqlcjxsritt5mczkcn4mmvcmymbqw7113fz2flkrerfwfps004/"
+                "?tab=canales"
+            ),
+            "timeout_sec": 60,
+            "priority": 10,
+        },
+        {
+            "id": "acestreamid",
+            "name": "AceStreamID",
+            "enabled": False,
+            "parser": "acestreamid",
+            "url": "https://acestreamid.com/",
+            "timeout_sec": 60,
+            "priority": 20,
+        },
+        {
+            "id": "hashes_json",
+            "name": "Hashes JSON",
+            "enabled": True,
+            "parser": "hashes_json",
+            "url": (
+                "https://k51qzi5uqu5di462t7j4vu4akwfhvtjhy88qbupktvoacqfqe9uforjvhyi4wr"
+                ".ipns.dweb.link/hashes.json"
+            ),
+            "timeout_sec": 45,
+            "priority": 15,
+        },
+        {
+            "id": "vk_channels",
+            "name": "VK Channels",
+            "enabled": True,
+            "parser": "vk_article",
+            "url": "https://vk.com/@-214914587-channels-list?subtype=primary",
+            "timeout_sec": 45,
+            "priority": 25,
+        }
+    ],
 }

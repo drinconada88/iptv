@@ -4,8 +4,37 @@
   "ace_path": "/ace/getstream?id=",
   "nas_path": "",
   "jellyfin_mode": false,
-  "auto_check_enabled": true,
+  "auto_check_enabled": false,
   "auto_check_minutes": 1.0,
   "auto_check_batch_size": 8,
-  "auto_check_timeout_sec": 4
+  "auto_check_timeout_sec": 4,
+  "sync_sources": [
+    {
+      "id": "new_era",
+      "name": "NEW ERA",
+      "enabled": true,
+      "parser": "new_era",
+      "url": "https://ipfs.io/ipns/k2k4r8oqlcjxsritt5mczkcn4mmvcmymbqw7113fz2flkrerfwfps004/?tab=canales",
+      "timeout_sec": 60,
+      "priority": 10
+    },
+    {
+      "id": "hashes_json",
+      "name": "Hashes JSON",
+      "enabled": true,
+      "parser": "hashes_json",
+      "url": "https://k51qzi5uqu5di462t7j4vu4akwfhvtjhy88qbupktvoacqfqe9uforjvhyi4wr.ipns.dweb.link/hashes.json",
+      "timeout_sec": 45,
+      "priority": 15
+    },
+    {
+      "id": "vk_channels",
+      "name": "VK Channels",
+      "enabled": true,
+      "parser": "vk_article",
+      "url": "https://vk.com/@-214914587-channels-list?subtype=primary",
+      "timeout_sec": 45,
+      "priority": 25
+    }
+  ]
 }

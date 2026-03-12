@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IPTV Manager - Login</title>
+  <style>
+    :root {
+      --bg: #0f1220;
+      --card: #171b2f;
+      --line: #2a3154;
+      --text: #e8edff;
+      --sub: #9aa4d1;
+      --accent: #7b8cff;
+      --danger: #ff7272;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      font-family: Inter, Segoe UI, Arial, sans-serif;
+      background: radial-gradient(circle at 10% 10%, #1b2140 0%, var(--bg) 55%);
+      color: var(--text);
+    }
+    .card {
+      width: min(92vw, 380px);
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 22px;
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 22px;
+    }
+    p {
+      margin: 0 0 16px;
+      color: var(--sub);
+      font-size: 14px;
+    }
+    label {
+      display: block;
+      margin: 12px 0 6px;
+      font-size: 13px;
+      color: var(--sub);
+    }
+    input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 11px 12px;
+      background: #11162a;
+      color: var(--text);
+      outline: none;
+    }
+    input:focus { border-color: var(--accent); }
+    button {
+      margin-top: 16px;
+      width: 100%;
+      border: 0;
+      border-radius: 10px;
+      padding: 11px 12px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .error {
+      min-height: 18px;
+      margin-top: 8px;
+      color: var(--danger);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <form class="card" method="post" action="/login">
+    <h1>IPTV Manager</h1>
+    <p>Inicia sesion para acceder al panel.</p>
+
+    <label for="username">Usuario</label>
+    <input id="username" name="username" autocomplete="username" required value="{{ username }}">
+
+    <label for="password">Contrasena</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required>
+
+    <button type="submit">Entrar</button>
+    <div class="error">{{ error }}</div>
+  </form>
+</body>
+</html>

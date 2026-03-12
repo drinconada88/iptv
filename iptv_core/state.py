@@ -18,6 +18,8 @@ class AppState:
             "last_run_at": 0,
             "running": False,
             "last_batch_count": 0,
+            "last_run_type": "",
+            "last_daily_run_key": "",
         }
 
         self.health_lock = threading.Lock()
