@@ -8,10 +8,13 @@ Gestor web de listas M3U con canales AceStream. Permite editar, filtrar, reorden
 
 - Interfaz web moderna (dark mode) con tabla, filtros, orden y busqueda instantanea.
 - Edicion completa de canales: nombre, grupo, estado, calidad, fuente, peer, tvg-id, logo, notas.
+- Cambio rapido de estado por fila (`MAIN`, `BACKUP`, `TEST`, `DISABLED`) desde la burbuja.
 - Edicion en bloque: seleccionar filas y aplicar estado/grupo/eliminar.
 - Reordenacion drag and drop con persistencia en backend.
 - Sync web de NEW ERA con deteccion de duplicados por peer hash.
-- Test de streams (individual y por lotes).
+- Test de streams manual por canal (`CHECK` -> `ONLINE/OFFLINE`) con bloqueo de concurrencia para no saturar Acexy.
+- Auto-check incremental y seguro en segundo plano (sin barridos masivos).
+- Cabecera con contadores de salud: `Online`, `Offline`, `No probados`.
 - Reproductor integrado y descarga M3U por canal.
 - Endpoint dinamico `live.m3u` para compartir con clientes IPTV.
 - UI responsive para movil.
@@ -22,13 +25,50 @@ Gestor web de listas M3U con canales AceStream. Permite editar, filtrar, reorden
 
 ```text
 iptv/
-|- app.py                 # Backend Flask (API + parser + live.m3u)
-|- import_from_web.py     # Sync/scraping NEW ERA
+|- app.py                     # Factory Flask: crea app, registra blueprints, arranca
+|
+|- routes/                    # Capa HTTP — Flask Blueprints (solo request/response)
+|  |- channels_bp.py          # CRUD canales, save/export/load/sync, /live.m3u
+|  |- streaming_bp.py         # Proxy MPEG-TS, HLS, descarga .m3u por canal
+|  |- health_bp.py            # Estado de salud, ping, test manual
+|  |- config_bp.py            # Config get/set, estadísticas
+|  `- backups_bp.py           # Gestión de backups: listar, crear, restaurar, borrar
+|
+|- iptv_core/                 # Dominio y servicios (sin dependencia de Flask)
+|  |- constants.py            # Rutas, defaults, constantes
+|  |- state.py                # AppState singleton (canales + health en memoria)
+|  |- config_store.py         # I/O: config.json, health_cache.json
+|  |- m3u_codec.py            # Parser y escritor M3U (puras, sin estado)
+|  |- health_logic.py         # Funciones puras de salud (cfg, cooldowns, payload)
+|  |- health_service.py       # Orquestación: thread de auto-check, boot
+|  |- channel_service.py      # Negocio de canales: CRUD, save, sync web
+|  |- backup_service.py       # Versionado de lista_iptv.m3u (backup/restore/prune)
+|  `- acexy_client.py         # Cliente HTTP robusto para Acexy/AceStream
+|
+|- scripts/                   # Utilidades de línea de comandos (legacy, no usan Flask)
+|  |- editor.py               # Editor de canales con GUI Tkinter
+|  |- convert_to_csv.py       # Migración única M3U → CSV
+|  |- generate_m3u.py         # Generador M3U desde CSV
+|  `- _list_groups.py         # Imprime grupos del M3U por stdout
+|
+|- import_from_web.py         # Sync/scraping NEW ERA (usado por /api/sync)
 |- requirements.txt
-|- lista_iptv.m3u         # Fuente principal
+|- lista_iptv.m3u             # ← ÚNICO fichero M3U. Todo lo demás se deriva de él.
+|
+|- backups/                   # Snapshots automáticos (generados en runtime, no en git)
+`- tmp/                       # Ficheros temporales de descarga (no en git)
 `- templates/
-   `- index.html          # UI SPA (HTML/CSS/JS)
+   `- index.html              # UI SPA (HTML/CSS/JS)
 ```
+
+### Ficheros M3U: una sola fuente de verdad
+
+| Fichero | Rol |
+|---|---|
+| `lista_iptv.m3u` | Única copia maestra. La app lee y escribe aquí. |
+| `backups/lista_iptv_YYYYMMDD_HHMMSS.m3u` | Snapshot automático creado antes de cada "Guardar". |
+| `tmp/_export_tmp.m3u` | Temporal de descarga. Se regenera en cada export. |
+| `/live.m3u` | Generado en memoria al vuelo. Nunca se escribe a disco. |
 
 ---
 
@@ -61,8 +101,12 @@ La app guarda configuracion en `config.json` con estos campos:
 - `ace_path` (normalmente `/ace/getstream?id=`)
 - `nas_path` (opcional)
 - `jellyfin_mode` (boolean)
+- `auto_check_enabled` (boolean)
+- `auto_check_minutes` (float, intervalo entre ciclos)
+- `auto_check_batch_size` (tamano de lote por ciclo)
+- `auto_check_timeout_sec` (timeout por check)
 
-Tambien puedes usar la variable de entorno `IPTV_DATA_DIR` para guardar `lista_iptv.m3u` y `config.json` en otra ruta (ej. Docker o NAS).
+Tambien puedes usar la variable de entorno `IPTV_DATA_DIR` para guardar `lista_iptv.m3u`, `config.json` y `health_cache.json` en otra ruta (ej. Docker o NAS).
 
 ---
 
@@ -136,7 +180,12 @@ Si publicas el endpoint en internet, evita direcciones privadas (`192.168.x.x`) 
 | `GET` | `/api/stats` | Contadores/estadisticas |
 | `GET` | `/api/config` | Lee config |
 | `POST` | `/api/config` | Guarda config |
+| `GET` | `/api/health` | Estado de salud de canales (cacheado) |
 | `GET` | `/live.m3u` | M3U dinamico compartible |
+| `GET` | `/api/backups` | Lista backups disponibles |
+| `POST` | `/api/backups` | Crea backup manual (body: `{"label": "..."}`) |
+| `POST` | `/api/backups/<file>/restore` | Restaura un backup (recarga canales en memoria) |
+| `DELETE` | `/api/backups/<file>` | Elimina un backup |
 
 ---
 
@@ -153,6 +202,9 @@ Si publicas el endpoint en internet, evita direcciones privadas (`192.168.x.x`) 
 - `live.m3u` abre pero no reproduce:
   - Revisar que `host/port` apunten a un Acexy accesible.
   - Verificar que el `id` exista y que AceStream este activo.
+- Muchos `timeout` o `Started new stream ... clients=0` en Acexy:
+  - Reducir `auto_check_minutes` / `auto_check_batch_size` y evitar checks por lote manuales.
+  - Mantener una sola instancia de la app para no duplicar auto-checks.
 - No ves cambios despues de editar:
   - El endpoint en vivo se actualiza al instante, pero para persistir tras reinicio hay que pulsar `Guardar M3U`.
 - En despliegue remoto:

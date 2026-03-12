@@ -996,8 +996,8 @@ http://192.168.1.169:8081/ace/getstream?id=22178d72e0f255dedd7e56f9474fea879289a
 # TVG-ID : M+ LaLiga HD
 # Logo   : https://i.ibb.co/yfV1Q8n/liga.png
 
-# Fuente: NEW ERA II | f33y | f33y  |  Peer: f33y  |  Estado: MAIN
-#EXTINF:-1 tvg-id="M+ LaLiga HD" tvg-logo="https://i.ibb.co/yfV1Q8n/liga.png" group-title="LA LIGA",M+ LALIGA FHD f33y | NEW ERA II | f33y | f33y | f33y
+# Fuente: NEW ERA II | f33y | f33y | f33y  |  Peer: f33y  |  Estado: MAIN
+#EXTINF:-1 tvg-id="M+ LaLiga HD" tvg-logo="https://i.ibb.co/yfV1Q8n/liga.png" group-title="LA LIGA",M+ LALIGA FHD f33y | NEW ERA II | f33y | f33y | f33y | f33y
 http://192.168.1.169:8081/ace/getstream?id=d4ff041287a43e3114d411d671c4b4e92e21f33y
 
 
@@ -1287,7 +1287,7 @@ http://192.168.1.169:8081/ace/getstream?id=651dd1e689a9a7d3b0695191dcf44b4d6e754
 #EXTINF:-1 tvg-id="DE | Rally TV" tvg-logo="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSsYoLr1q3_h6Jo21AgDZhyK62VNC6EdYRbAg&s" group-title="MOTOR",RALLY TV | NEW ERA III | b2ea
 http://192.168.1.169:8081/ace/getstream?id=8e96e35afd910d1a056dc7bf25139b8e2849b2ea
 
-# Fuente: ELCANO  |  Peer: 53f9  |  Estado: BACKUP  |  Notas: sync web NEW ERA
+# Fuente: ELCANO  |  Peer: 53f9  |  Estado: BACKUP
 #EXTINF:-1 tvg-id="" tvg-logo="" group-title="MOTOR",RALLY TV | ELCANO | 53f9
 http://192.168.1.169:8081/ace/getstream?id=12404b00d2787995d639ccf71a80da5d39d153f9
 
