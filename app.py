@@ -8,7 +8,7 @@ import os
 from flask import Flask
 
 from iptv_core.channel_service import load_from_file
-from iptv_core.constants import BASE_DIR, M3U_FILE
+from iptv_core.constants import BASE_DIR, CONFIG_FILE, HEALTH_FILE, M3U_FILE
 from iptv_core.health_service import ensure_runtime_background
 from iptv_core.state import state
 from routes import register_blueprints
@@ -20,22 +20,33 @@ def create_app() -> Flask:
     return app
 
 
-def _seed_m3u_if_needed():
-    """On first Docker boot copy the bundled M3U into the data volume."""
-    seed_file = os.path.join(BASE_DIR, "lista_iptv.m3u")
-    if not os.path.isfile(M3U_FILE) and os.path.isfile(seed_file):
-        try:
-            os.makedirs(os.path.dirname(M3U_FILE), exist_ok=True)
-            with open(seed_file, encoding="utf-8") as src, \
-                    open(M3U_FILE, "w", encoding="utf-8") as dst:
-                dst.write(src.read())
-            print(f"OK  Seed M3U copiado a {M3U_FILE}")
-        except Exception as e:
-            print(f"WARN  No se pudo inicializar M3U en {M3U_FILE}: {e}")
+def _seed_file_if_needed(src_name: str, dst_path: str):
+    """
+    On Docker boots with IPTV_DATA_DIR mounted, seed data from repo root if needed.
+    Never overwrite existing persistent files.
+    """
+    src_path = os.path.join(BASE_DIR, src_name)
+    if os.path.isfile(dst_path) or not os.path.isfile(src_path):
+        return
+    try:
+        os.makedirs(os.path.dirname(dst_path), exist_ok=True)
+        with open(src_path, encoding="utf-8") as src, open(
+            dst_path, "w", encoding="utf-8"
+        ) as dst:
+            dst.write(src.read())
+        print(f"OK  Seed copiado: {src_name} -> {dst_path}")
+    except Exception as e:
+        print(f"WARN  No se pudo inicializar {dst_path} desde {src_name}: {e}")
+
+
+def _seed_data_if_needed():
+    _seed_file_if_needed("lista_iptv.m3u", M3U_FILE)
+    _seed_file_if_needed("config.json", CONFIG_FILE)
+    _seed_file_if_needed("health_cache.json", HEALTH_FILE)
 
 
 if __name__ == "__main__":
-    _seed_m3u_if_needed()
+    _seed_data_if_needed()
 
     if os.path.isfile(M3U_FILE):
         load_from_file(M3U_FILE)

@@ -92,6 +92,24 @@ Abrir `http://localhost:5000`.
 
 ---
 
+## Despliegue Unraid + Dockge (flujo simple)
+
+Si usas este `compose` con `IPTV_DATA_DIR=/data` y volumen host `.../iptv-manager/data:/data`, puedes actualizar siempre asi:
+
+1. Borrar contenido de `appdata/iptv-manager`.
+2. Copiar el repo local completo tal cual dentro de `appdata/iptv-manager`.
+3. En Dockge pulsar `Actualizar` (rebuild) y luego `Iniciar`.
+
+En el arranque, si faltan en `/data`, la app inicializa automaticamente:
+
+- `lista_iptv.m3u`
+- `config.json`
+- `health_cache.json`
+
+desde la raiz del proyecto (`/app`) hacia el volumen persistente (`/data`), sin sobreescribir ficheros ya existentes.
+
+---
+
 ## Configuracion
 
 La app guarda configuracion en `config.json` con estos campos:
@@ -107,6 +125,8 @@ La app guarda configuracion en `config.json` con estos campos:
 - `auto_check_timeout_sec` (timeout por check)
 
 Tambien puedes usar la variable de entorno `IPTV_DATA_DIR` para guardar `lista_iptv.m3u`, `config.json` y `health_cache.json` en otra ruta (ej. Docker o NAS).
+
+En Docker, si `IPTV_DATA_DIR` apunta a un volumen y faltan esos ficheros, la app intenta inicializarlos automaticamente desde la raiz del proyecto (`/app`) en el primer arranque. No sobreescribe ficheros ya existentes en el volumen.
 
 ---
 
