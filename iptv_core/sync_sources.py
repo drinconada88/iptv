@@ -75,8 +75,9 @@ def run_sync_sources(cfg: dict, known_peers: set[str]) -> dict:
                         "source": str(ch.get("source", "")).strip(),
                         "peer_full": peer,
                         "status": "BACKUP",
-                        "tvg_id": "",
-                        "tvg_logo": "",
+                        "enabled": True,
+                        "tvg_id": str(ch.get("tvg_id", "")).strip(),
+                        "tvg_logo": str(ch.get("tvg_logo", "")).strip(),
                         "notes": f"sync web {sname}",
                     }
                 )

@@ -5,47 +5,11 @@ Abrir:     http://localhost:5000
 """
 import os
 
-from flask import Flask, jsonify, redirect, request, session, url_for
-
-from iptv_core.channel_service import load_from_file
-from iptv_core.constants import BASE_DIR, CONFIG_FILE, HEALTH_FILE, M3U_FILE
-from iptv_core.health_service import ensure_runtime_background
-from iptv_core.state import state
-from routes import register_blueprints
-
-
-def create_app() -> Flask:
-    app = Flask(__name__)
-    app.secret_key = os.environ.get("IPTV_SECRET_KEY", "change-this-iptv-secret")
-
-    def _auth_enabled() -> bool:
-        return os.environ.get("IPTV_AUTH_ENABLED", "1").strip().lower() not in {
-            "0",
-            "false",
-            "no",
-            "off",
-        }
-
-    @app.before_request
-    def _require_login():
-        if not _auth_enabled():
-            return None
-
-        path = request.path or ""
-        if path.startswith("/static/"):
-            return None
-        if path in {"/login", "/logout", "/live.m3u"}:
-            return None
-
-        if session.get("auth_ok"):
-            return None
-
-        if path.startswith("/api/"):
-            return jsonify({"ok": False, "error": "auth_required"}), 401
-        return redirect(url_for("auth.login_page", next=path))
-
-    register_blueprints(app)
-    return app
+from app import create_app
+from app.domain.constants import BASE_DIR, CONFIG_FILE, HEALTH_FILE, M3U_FILE
+from app.domain.state import state
+from app.services.channels_service import load_from_file
+from app.services.health_service import ensure_runtime_background
 
 
 def _seed_file_if_needed(src_name: str, dst_path: str):

@@ -3,9 +3,9 @@ from collections import Counter
 
 from flask import Blueprint, jsonify, request
 
-from iptv_core.channel_service import ace_base
-from iptv_core.config_store import load_config, save_config
-from iptv_core.state import state
+from app.domain.state import state
+from app.persistence.config_store import load_config, save_config
+from app.services.channels_service import ace_base
 
 config_bp = Blueprint("config", __name__)
 
@@ -44,16 +44,16 @@ def api_stats():
     counts = Counter(ch.get("status", "") for ch in state.channels)
     gcounts = Counter(ch.get("group", "") for ch in state.channels)
     disabled_count = sum(1 for ch in state.channels if not bool(ch.get("enabled", True)))
-    return jsonify({
-        "total": len(state.channels),
-        "status_counts": dict(counts),
-        "disabled_count": disabled_count,
-        "group_counts": {g: c for g, c in sorted(gcounts.items())},
-        "path": state.m3u_path,
-    })
+    return jsonify(
+        {
+            "total": len(state.channels),
+            "status_counts": dict(counts),
+            "disabled_count": disabled_count,
+            "group_counts": {g: c for g, c in sorted(gcounts.items())},
+            "path": state.m3u_path,
+        }
+    )
 
-
-# ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _clamp_float(cfg: dict, data: dict, key: str, lo: float):
     if key in data:
@@ -69,3 +69,4 @@ def _clamp_int(cfg: dict, data: dict, key: str, lo: int, hi: int):
             cfg[key] = max(lo, min(hi, int(data[key])))
         except Exception:
             pass
+

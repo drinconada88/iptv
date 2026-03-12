@@ -250,6 +250,7 @@ tbody td { padding: 0 12px; }
 .sp-slow     { background: rgba(249,226,175,.2); color: var(--yellow); border-color: rgba(249,226,175,.4); }
 .sp-timeout  { background: rgba(250,179,135,.2); color: var(--peach); }
 .sp-offline  { background: rgba(243,139,168,.35); color: #ffd6de; border-color: rgba(243,139,168,.9); }
+.sp-disabled { background: rgba(108,112,134,.22); color: var(--ov1); border-color: rgba(186,194,222,.28); }
 .sp-error    { background: rgba(108,112,134,.2); color: var(--ov1); }
 .sp-testing  {
   background: linear-gradient(110deg,
@@ -861,10 +862,10 @@ tbody tr.row-timeout { box-shadow: inset 3px 0 0 var(--peach); }
       <span id="badge-main"     class="badge badge-main     filterable" title="Filtrar por MAIN"     onclick="setStatusFilter('MAIN')">— Main</span>
       <span id="badge-backup"   class="badge badge-backup   filterable" title="Filtrar por BACKUP"   onclick="setStatusFilter('BACKUP')">— Backup</span>
       <span id="badge-test"     class="badge badge-test     filterable" title="Filtrar por TEST"     onclick="setStatusFilter('TEST')">— Test</span>
-      <span id="badge-disabled" class="badge badge-disabled filterable" title="Filtrar por DISABLED" onclick="setStatusFilter('DISABLED')">— Disabled</span>
       <div class="sep-health"></div>
       <span id="badge-online"  class="badge badge-online  filterable" title="Filtrar canales online"     onclick="setHealthFilter('online')">— Online</span>
       <span id="badge-offline" class="badge badge-offline filterable" title="Filtrar canales offline"    onclick="setHealthFilter('offline')">— Offline</span>
+      <span id="badge-disabled" class="badge badge-disabled filterable" title="Filtrar canales deshabilitados" onclick="setHealthFilter('disabled')">— Disabled</span>
       <span id="badge-unknown" class="badge badge-unknown filterable" title="Filtrar canales sin probar" onclick="setHealthFilter('unknown')">— No probados</span>
     </div>
     <div class="header-actions">
@@ -911,7 +912,6 @@ tbody tr.row-timeout { box-shadow: inset 3px 0 0 var(--peach); }
         <option value="MAIN">MAIN</option>
         <option value="BACKUP">BACKUP</option>
         <option value="TEST">TEST</option>
-        <option value="DISABLED">DISABLED</option>
       </select>
       <div class="toolbar-sep"></div>
       <span id="rowCount" style="font-size:12px;color:var(--ov1);white-space:nowrap"></span>
@@ -947,7 +947,8 @@ tbody tr.row-timeout { box-shadow: inset 3px 0 0 var(--peach); }
       <button class="btn btn-ghost btn-sm" onclick="checkSelectedConnections()">Comprobar conexión seleccionados</button>
       <button class="btn btn-ghost btn-sm" onclick="bulkSetStatus('MAIN')">→ MAIN</button>
       <button class="btn btn-ghost btn-sm" onclick="bulkSetStatus('BACKUP')">→ BACKUP</button>
-      <button class="btn btn-ghost btn-sm" onclick="bulkSetStatus('DISABLED')">→ Deshabilitar</button>
+      <button class="btn btn-ghost btn-sm" onclick="bulkSetEnabled(false)">→ Deshabilitar</button>
+      <button class="btn btn-ghost btn-sm" onclick="bulkSetEnabled(true)">→ Habilitar</button>
       <input class="bulk-group-input" id="bulkGroupInput" placeholder="Nuevo grupo…" list="groupSuggestions">
       <button class="btn btn-ghost btn-sm" onclick="bulkSetGroup()">Cambiar grupo</button>
       <div style="width:1px;height:16px;background:var(--s1)"></div>
@@ -1022,7 +1023,6 @@ tbody tr.row-timeout { box-shadow: inset 3px 0 0 var(--peach); }
             <option value="MAIN">MAIN</option>
             <option value="BACKUP">BACKUP</option>
             <option value="TEST">TEST</option>
-            <option value="DISABLED">DISABLED</option>
           </select>
         </div>
       </div>
@@ -1082,7 +1082,7 @@ tbody tr.row-timeout { box-shadow: inset 3px 0 0 var(--peach); }
 <div class="modal-overlay" id="syncModal" onclick="closeSyncModal(event)">
   <div class="modal" style="width:640px">
     <div class="modal-header">
-      <span class="modal-title">Sync · NEW ERA</span>
+      <span class="modal-title">Sync web · fuentes activas</span>
       <button class="modal-close" onclick="closeSyncModal()">
         <svg style="width:16px;height:16px"><use href="#i-x"/></svg>
       </button>
@@ -1167,8 +1167,8 @@ tbody tr.row-timeout { box-shadow: inset 3px 0 0 var(--peach); }
 let allChannels   = [];
 let filteredRows  = [];
 let activeGroup   = '__ALL__';
-let activeStatusFilter = '';   // '' | 'MAIN' | 'BACKUP' | 'TEST' | 'DISABLED'
-let activeHealthFilter = '';   // '' | 'online' | 'offline' | 'unknown'
+let activeStatusFilter = '';   // '' | 'MAIN' | 'BACKUP' | 'TEST'
+let activeHealthFilter = '';   // '' | 'online' | 'offline' | 'disabled' | 'unknown'
 let sortCol       = null;
 let sortDir       = 1;
 let m3uPath       = '';
@@ -1190,28 +1190,39 @@ async function loadConfig() {
   _aceBase = `http://${cfg.ace_host}:${cfg.ace_port}${cfg.ace_path}`;
 }
 
-async function saveConfig() {
+async function saveConfig(options = {}) {
+  const silent = Boolean(options && options.silent);
   const host = document.getElementById('cfgHost').value.trim();
   const port = document.getElementById('cfgPort').value.trim();
-  if (!host || !port) { toast('Introduce IP y puerto', 'error'); return; }
+  if (!host || !port) {
+    if (!silent) toast('Introduce IP y puerto', 'error');
+    return false;
+  }
 
-  const res = await fetch('/api/config', {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({
-      ace_host: host, ace_port: port,
-    })
-  });
-  const r = await res.json();
-  if (r.ok) {
-    _aceBase = r.ace_base;
-    const btn = document.getElementById('proxySaveBtn');
-    if (btn) {
-      btn.classList.add('saved');
-      setTimeout(() => btn.classList.remove('saved'), 2000);
+  try {
+    const res = await fetch('/api/config', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        ace_host: host, ace_port: port,
+      })
+    });
+    const r = await res.json();
+    if (r.ok) {
+      _aceBase = r.ace_base;
+      const btn = document.getElementById('proxySaveBtn');
+      if (btn) {
+        btn.classList.add('saved');
+        setTimeout(() => btn.classList.remove('saved'), 2000);
+      }
+      if (!silent) toast('Config guardada', 'success');
+      return true;
     }
-    toast('Config guardada', 'success');
-  } else {
-    toast('Error guardando configuración', 'error');
+
+    if (!silent) toast('Error guardando configuración', 'error');
+    return false;
+  } catch (_) {
+    if (!silent) toast('Error guardando configuración', 'error');
+    return false;
   }
 }
 
@@ -1258,6 +1269,14 @@ async function init() {
 async function loadChannels() {
   const res  = await fetch('/api/channels');
   allChannels = await res.json();
+  allChannels = allChannels.map(ch => {
+    const legacyDisabled = String(ch.status || '').toUpperCase() === 'DISABLED';
+    const enabled = Object.prototype.hasOwnProperty.call(ch, 'enabled')
+      ? Boolean(ch.enabled)
+      : !legacyDisabled;
+    const status = legacyDisabled ? 'BACKUP' : String(ch.status || 'BACKUP').toUpperCase();
+    return { ...ch, enabled, status };
+  });
   // Limpia cache de health para canales eliminados
   const alive = new Set(allChannels.map(c => c.id));
   for (const id of Array.from(_streamHealth.keys())) {
@@ -1276,7 +1295,7 @@ async function loadStats() {
   document.getElementById('badge-main').textContent     = `${(data.status_counts.MAIN    || 0)} Main`;
   document.getElementById('badge-backup').textContent   = `${(data.status_counts.BACKUP  || 0)} Backup`;
   document.getElementById('badge-test').textContent     = `${(data.status_counts.TEST    || 0)} Test`;
-  document.getElementById('badge-disabled').textContent = `${(data.status_counts.DISABLED|| 0)} Disabled`;
+  document.getElementById('badge-disabled').textContent = `${(data.disabled_count || 0)} Disabled`;
   document.getElementById('sb-path').textContent        = m3uPath;
 
   renderSidebar(data.group_counts);
@@ -1331,7 +1350,7 @@ function setHealthFilter(health) {
 }
 
 function _updateStatusBadgeHighlight() {
-  const map = { '': 'total', 'MAIN': 'main', 'BACKUP': 'backup', 'TEST': 'test', 'DISABLED': 'disabled' };
+  const map = { '': 'total', 'MAIN': 'main', 'BACKUP': 'backup', 'TEST': 'test' };
   Object.entries(map).forEach(([val, key]) => {
     const el = document.getElementById('badge-' + key);
     if (el) el.classList.toggle('filter-active', activeStatusFilter === val && val !== '');
@@ -1342,7 +1361,7 @@ function _updateStatusBadgeHighlight() {
 }
 
 function _updateHealthBadgeHighlight() {
-  ['online', 'offline', 'unknown'].forEach(k => {
+  ['online', 'offline', 'disabled', 'unknown'].forEach(k => {
     const el = document.getElementById('badge-' + k);
     if (el) el.classList.toggle('filter-active', activeHealthFilter === k);
   });
@@ -1358,12 +1377,13 @@ function applyFilters() {
 
     if (activeHealthFilter) {
       const hs = String(_streamHealth.get(ch.id)?.status || 'unknown').toLowerCase();
-      const isDisabled = (ch.status || '').toUpperCase() === 'DISABLED' || hs === 'disabled';
+      const isDisabled = !isChannelEnabled(ch) || hs === 'disabled';
       const isOnline  = hs === 'online';
       const isOffline = hs === 'offline' || hs === 'timeout' || hs === 'error';
       const isUnknown = !isOnline && !isOffline && !isDisabled;
       if (activeHealthFilter === 'online'  && !isOnline)  return false;
       if (activeHealthFilter === 'offline' && !isOffline) return false;
+      if (activeHealthFilter === 'disabled' && !isDisabled) return false;
       if (activeHealthFilter === 'unknown' && !isUnknown) return false;
     }
 
@@ -1404,10 +1424,15 @@ function hl(text, q) {
   return escHtml(text).replace(re, '<mark>$1</mark>');
 }
 function escHtml(s) { return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function isChannelEnabled(ch) {
+  if (!ch || typeof ch !== 'object') return true;
+  if (Object.prototype.hasOwnProperty.call(ch, 'enabled')) return Boolean(ch.enabled);
+  return String(ch.status || '').toUpperCase() !== 'DISABLED';
+}
 
-const STATUS_DOT  = { MAIN:'dot-main', BACKUP:'dot-backup', TEST:'dot-test', DISABLED:'dot-disabled' };
-const STATUS_PILL = { MAIN:'pill-main', BACKUP:'pill-backup', TEST:'pill-test', DISABLED:'pill-disabled' };
-const STATUS_OPTIONS = ['MAIN', 'BACKUP', 'TEST', 'DISABLED'];
+const STATUS_DOT  = { MAIN:'dot-main', BACKUP:'dot-backup', TEST:'dot-test' };
+const STATUS_PILL = { MAIN:'pill-main', BACKUP:'pill-backup', TEST:'pill-test' };
+const STATUS_OPTIONS = ['MAIN', 'BACKUP', 'TEST'];
 
 // ── Mobile detection ──────────────────────────────────────────────────────────
 function isMobile() { return window.innerWidth <= 640; }
@@ -1432,7 +1457,7 @@ function renderCards(rows, q = '') {
   empty.style.display = 'none';
 
   cardsEl.innerHTML = rows.map(ch => {
-    const dis    = ch.status === 'DISABLED' ? ' card-disabled' : '';
+    const dis    = !isChannelEnabled(ch) ? ' card-disabled' : '';
     const selCls = _selectedIds.has(ch.id) ? ' selected-row' : '';
     const metaTags = [
       ch.group    ? `<span class="card-tag card-group-tag">${hl(ch.group, q)}</span>`  : '',
@@ -1451,7 +1476,7 @@ function renderCards(rows, q = '') {
       <div class="card-bottom">
         <button class="icon-btn" title="Editar" onclick="openEdit(${ch.id});event.stopPropagation()"><svg><use href="#i-edit"/></svg></button>
         ${ch.peer_full ? `<button class="icon-btn" title="Reproductor" onclick="openPlayer(${ch.id});event.stopPropagation()"><svg><use href="#i-monitor"/></svg></button>` : ''}
-        ${ch.status !== 'DISABLED'
+        ${isChannelEnabled(ch)
           ? `<button class="icon-btn danger" title="Deshabilitar" onclick="toggleChannelEnabled(${ch.id},false);event.stopPropagation()"><svg><use href="#i-stop"/></svg></button>`
           : `<button class="icon-btn" title="Habilitar" onclick="toggleChannelEnabled(${ch.id},true);event.stopPropagation()"><svg><use href="#i-check"/></svg></button>`
         }
@@ -1490,7 +1515,7 @@ function renderTable(rows, q = '') {
     tbody.innerHTML = rows.map(ch => {
     const ps      = ch.peer_full ? ch.peer_full.slice(-4) : '—';
     const pill    = STATUS_PILL[ch.status] || 'pill-disabled';
-    const dis     = ch.status === 'DISABLED' ? ' disabled-row' : '';
+    const dis     = !isChannelEnabled(ch) ? ' disabled-row' : '';
     const selCls  = _selectedIds.has(ch.id) ? ' selected-row' : '';
     return `<tr class="${dis}${selCls}" data-id="${ch.id}" draggable="true">
       <td class="col-drag">
@@ -1511,9 +1536,9 @@ function renderTable(rows, q = '') {
         <div class="row-actions">
           <button class="icon-btn" title="Editar" onclick="openEdit(${ch.id})"><svg><use href="#i-edit"/></svg></button>
           ${ch.peer_full ? `<button class="icon-btn" title="Ver en reproductor integrado" onclick="openPlayer(${ch.id})"><svg><use href="#i-monitor"/></svg></button>` : ''}
-          ${ch.status !== 'DISABLED'
+          ${isChannelEnabled(ch)
             ? `<button class="icon-btn danger" title="Deshabilitar canal (quedará comentado en el M3U)" onclick="toggleChannelEnabled(${ch.id}, false)"><svg><use href="#i-stop"/></svg></button>`
-            : `<button class="icon-btn" title="Habilitar canal (volverá como TEST)" onclick="toggleChannelEnabled(${ch.id}, true)"><svg><use href="#i-check"/></svg></button>`
+            : `<button class="icon-btn" title="Habilitar canal" onclick="toggleChannelEnabled(${ch.id}, true)"><svg><use href="#i-check"/></svg></button>`
           }
           <button class="icon-btn" title="Duplicar como BACKUP" onclick="duplicateChannel(${ch.id})"><svg><use href="#i-copy"/></svg></button>
           <button class="icon-btn danger" title="Eliminar" onclick="confirmDelete(${ch.id})"><svg><use href="#i-trash"/></svg></button>
@@ -1745,11 +1770,10 @@ async function toggleChannelEnabled(id, enable) {
     if (!ok) return;
   }
 
-  const nextStatus = enable ? 'TEST' : 'DISABLED';
   const res = await fetch(`/api/channel/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ status: nextStatus })
+    body: JSON.stringify({ enabled: Boolean(enable) })
   });
   const r = await res.json();
   if (!r.ok) {
@@ -1759,11 +1783,17 @@ async function toggleChannelEnabled(id, enable) {
 
   const idx = allChannels.findIndex(c => c.id === id);
   if (idx !== -1) allChannels[idx] = r.channel;
+  if (enable) {
+    _streamHealth.set(id, { status: 'unknown', latency_ms: 0, detail: '' });
+  } else {
+    _streamHealth.set(id, { status: 'disabled', latency_ms: 0, detail: '' });
+  }
   applyFilters();
   loadStats();
+  _refreshHealthHeaderBadges();
 
   if (enable) {
-    toast(`Canal habilitado como TEST. Si va bien, puedes pasarlo a MAIN/BACKUP.`, 'success');
+    toast('Canal habilitado.', 'success');
   } else {
     toast('Canal deshabilitado. Se reflejará en el M3U al guardar.', 'info');
   }
@@ -1773,12 +1803,13 @@ async function toggleChannelEnabled(id, enable) {
 async function saveM3u() {
   const res = await fetch('/api/save', {
     method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ path: m3uPath })
+    body: JSON.stringify({})
   });
   const r = await res.json();
   if (r.ok) {
     const s = r.stats;
-    toast(`M3U guardado · ${s.MAIN} main, ${s.BACKUP} backup, ${s.DISABLED} disabled`, 'success');
+    const disabled = Number(r.disabled_count || 0);
+    toast(`M3U guardado · ${s.MAIN} main, ${s.BACKUP} backup, ${s.TEST} test, ${disabled} disabled`, 'success');
     if (r.nas) {
       if (r.nas.ok) toast(`NAS actualizada · ${r.nas.path}`, 'success');
       else          toast(`Error al escribir en NAS: ${r.nas.error}`, 'error');
@@ -1789,8 +1820,16 @@ async function saveM3u() {
   }
 }
 
-function exportM3u() {
-  window.location.href = '/api/export';
+async function exportM3u() {
+  const host = document.getElementById('cfgHost').value.trim();
+  const port = document.getElementById('cfgPort').value.trim();
+  const saved = await saveConfig({ silent: true });
+  if (!saved) {
+    toast('No se pudo guardar IP/puerto. Exportación cancelada.', 'error');
+    return;
+  }
+  const qs = new URLSearchParams({ host, port }).toString();
+  window.location.href = `/api/export?${qs}`;
   toast('Descargando lista M3U…', 'info');
 }
 
@@ -2032,6 +2071,27 @@ async function bulkSetStatus(status) {
   toast(`${ids.length} canales → ${status}`, 'success');
 }
 
+async function bulkSetEnabled(enabled) {
+  if (!_selectedIds.size) return;
+  const ids = [..._selectedIds];
+  const res = await fetch('/api/channels/batch', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids, patch: { enabled: Boolean(enabled) } })
+  });
+  const r = await res.json();
+  if (!r.ok) {
+    toast(r.error || 'No se pudo actualizar en lote', 'error');
+    return;
+  }
+  await loadChannels();
+  ids.forEach(id => _selectedIds.add(id));
+  _updateBulkBar();
+  loadStats();
+  _refreshHealthHeaderBadges();
+  toast(`${ids.length} canales ${enabled ? 'habilitados' : 'deshabilitados'}`, 'success');
+}
+
 async function bulkSetGroup() {
   const group = document.getElementById('bulkGroupInput').value.trim();
   if (!group || !_selectedIds.size) return;
@@ -2126,9 +2186,6 @@ async function updateStatusInline(id, status) {
   }
   const idx = allChannels.findIndex(c => c.id === id);
   if (idx !== -1) allChannels[idx] = r.channel;
-  if (status === 'DISABLED') {
-    _streamHealth.set(id, { status: 'disabled', latency_ms: 0, detail: '' });
-  }
   applyFilters();
   loadStats();
 }
@@ -2153,7 +2210,7 @@ function _pillView(info) {
   if (st === 'online' && ms > 3500) return { cls: 'sp-slow', txt: 'ONLINE', title: `Online lento (${ms} ms)${detail}`, rowCls: 'row-online' };
   if (st === 'online') return { cls: 'sp-online', txt: 'ONLINE', title: `Online (${ms} ms)${detail}`, rowCls: 'row-online' };
   if (st === 'timeout') return { cls: 'sp-offline', txt: 'OFFLINE', title: `Timeout (${ms} ms)${detail}`, rowCls: 'row-offline' };
-  if (st === 'disabled') return { cls: 'sp-offline', txt: 'OFFLINE', title: 'Canal deshabilitado', rowCls: '' };
+  if (st === 'disabled') return { cls: 'sp-disabled', txt: 'DISABLED', title: 'Canal deshabilitado', rowCls: '' };
   if (st === 'no_peer') return { cls: 'sp-offline', txt: 'OFFLINE', title: 'Sin peer configurado', rowCls: 'row-offline' };
   if (st === 'offline') return { cls: 'sp-offline', txt: 'OFFLINE', title: `Offline (${ms} ms)${detail}`, rowCls: 'row-offline' };
   if (st === 'error') return { cls: 'sp-offline', txt: 'OFFLINE', title: `Error (${ms} ms)${detail}`, rowCls: 'row-offline' };
@@ -2181,9 +2238,13 @@ function _paintVisibleStreamPills() {
 function _refreshHealthHeaderBadges() {
   let online = 0;
   let offline = 0;
+  let disabled = 0;
   let unknown = 0;
   allChannels.forEach(ch => {
-    if ((ch.status || '').toUpperCase() === 'DISABLED') return;
+    if (!isChannelEnabled(ch)) {
+      disabled += 1;
+      return;
+    }
     const st = String(_streamHealth.get(ch.id)?.status || 'unknown').toLowerCase();
     if (st === 'online') {
       online += 1;
@@ -2197,6 +2258,7 @@ function _refreshHealthHeaderBadges() {
   });
   document.getElementById('badge-online').textContent = `${online} Online`;
   document.getElementById('badge-offline').textContent = `${offline} Offline`;
+  document.getElementById('badge-disabled').textContent = `${disabled} Disabled`;
   document.getElementById('badge-unknown').textContent = `${unknown} No probados`;
 }
 
@@ -2314,6 +2376,12 @@ async function _probeOne(id, userTriggered = false, e = null) {
   if (_manualCheckRunning || _autoCheckRunning) return;
   const ch = allChannels.find(c => c.id === id);
   if (!ch) return;
+  if (!isChannelEnabled(ch)) {
+    _streamHealth.set(id, { status: 'disabled', latency_ms: 0, detail: '' });
+    _paintPill(id);
+    if (userTriggered) toast('Canal deshabilitado', 'info');
+    return;
+  }
   if (!ch.peer_full) {
     _streamHealth.set(id, { status: 'no_peer', latency_ms: 0, detail: '' });
     _paintPill(id);
@@ -2680,6 +2748,12 @@ async function syncWeb() {
   try {
     const res  = await fetch('/api/sync', { method: 'POST' });
     const data = await res.json();
+    const sourceItems = Array.isArray(data.sources) ? data.sources : [];
+    const sourceDetail = sourceItems.length
+      ? `<div style="margin-top:10px;font-size:12px;color:var(--ov1)">
+           ${sourceItems.map(s => `${escHtml(s.name || s.id || 'fuente')}: ${s.ok ? 'OK' : 'ERROR'}`).join(' · ')}
+         </div>`
+      : '';
 
     if (!data.ok) {
       document.getElementById('syncBody').innerHTML = `
@@ -2699,6 +2773,7 @@ async function syncWeb() {
           <div style="color:var(--ov1);margin-top:6px;font-size:12px">
             Fuentes OK: <b style="color:var(--text)">${okSources}</b>
           </div>
+          ${sourceDetail}
         </div>`;
     } else {
       const okSources = Array.isArray(data.sources) ? data.sources.filter(s => s.ok).length : 0;
@@ -2736,7 +2811,8 @@ async function syncWeb() {
         </div>
         <p style="margin-top:12px;font-size:12px;color:var(--ov1)">
           Los canales ya estan en memoria. Guarda el M3U para hacerlos permanentes.
-        </p>`;
+        </p>
+        ${sourceDetail}`;
       document.getElementById('syncSaveBtn').style.display = 'flex';
 
       // Recargar tabla y sidebar

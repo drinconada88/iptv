@@ -52,7 +52,7 @@ def pick_health_candidates(channels: list, cache: dict, batch_size: int) -> list
     now = int(time.time())
     rows = []
     for ch in channels:
-        if ch.get("status", "").upper() == "DISABLED":
+        if not bool(ch.get("enabled", True)):
             continue
         peer = (ch.get("peer_full") or "").strip()
         if not peer:
@@ -77,7 +77,7 @@ def health_payload(channels: list, cache: dict, meta: dict, cfg: dict) -> dict:
     for ch in channels:
         idx = ch["id"]
         peer = (ch.get("peer_full") or "").strip()
-        if ch.get("status", "").upper() == "DISABLED":
+        if not bool(ch.get("enabled", True)):
             rows[idx] = {"status": "disabled", "latency_ms": 0, "detail": "", "checked_at": 0}
             continue
         if not peer:

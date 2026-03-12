@@ -4,25 +4,22 @@ from datetime import datetime
 
 from flask import Blueprint, Response, jsonify, render_template, request, send_file
 
-from iptv_core.channel_service import (
-    ace_base,
+from app.domain.constants import EPG_URL, M3U_FILE
+from app.domain.m3u_codec import peer_short
+from app.domain.state import state
+from app.persistence.config_store import load_config
+from app.services.channels_service import (
     batch_update_channels,
     create_channel,
     delete_channel,
     duplicate_channel,
     export_to_tmp,
-    get_channel,
     load_from_file,
     reorder_channels,
     save_to_file,
-    sync_from_web,
     update_channel,
 )
-from iptv_core.config_store import load_config
-from iptv_core.constants import EPG_URL, M3U_FILE
-from iptv_core.health_service import ensure_runtime_background
-from iptv_core.m3u_codec import peer_short
-from iptv_core.state import state
+from app.services.health_service import ensure_runtime_background
 
 channels_bp = Blueprint("channels", __name__)
 
@@ -134,21 +131,8 @@ def api_load():
     return jsonify({"ok": True, "count": len(channels)})
 
 
-@channels_bp.route("/api/sync", methods=["POST"])
-def api_sync():
-    try:
-        result = sync_from_web()
-        return jsonify({"ok": True, **result})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
-
-
 @channels_bp.route("/live.m3u")
 def live_m3u():
-    """Dynamic M3U endpoint for IPTV clients.
-
-    Query params: host, port, status (MAIN/BACKUP/TEST), group.
-    """
     cfg = load_config()
     host = request.args.get("host", "").strip() or cfg.get("ace_host", "")
     port = request.args.get("port", "").strip() or str(cfg.get("ace_port", ""))
@@ -199,3 +183,4 @@ def live_m3u():
         lines.append("")
 
     return Response("\n".join(lines), content_type="audio/x-mpegurl; charset=utf-8")
+

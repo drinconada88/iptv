@@ -33,7 +33,7 @@ EPG_URL = (
 )
 
 # ── Channel metadata ──────────────────────────────────────────────────────────
-STATUSES = ["MAIN", "BACKUP", "TEST", "DISABLED"]
+STATUSES = ["MAIN", "BACKUP", "TEST"]
 QUALITY_SET = {"FHD", "HD", "SD", "4K"}
 STATUS_ORDER = {s: i for i, s in enumerate(STATUSES)}
 
@@ -69,6 +69,27 @@ DEFAULT_CFG = {
             "url": "https://acestreamid.com/",
             "timeout_sec": 60,
             "priority": 20,
+        },
+        {
+            "id": "hashes_json",
+            "name": "Hashes JSON",
+            "enabled": True,
+            "parser": "hashes_json",
+            "url": (
+                "https://k51qzi5uqu5di462t7j4vu4akwfhvtjhy88qbupktvoacqfqe9uforjvhyi4wr"
+                ".ipns.dweb.link/hashes.json"
+            ),
+            "timeout_sec": 45,
+            "priority": 15,
+        },
+        {
+            "id": "vk_channels",
+            "name": "VK Channels",
+            "enabled": True,
+            "parser": "vk_article",
+            "url": "https://vk.com/@-214914587-channels-list?subtype=primary",
+            "timeout_sec": 45,
+            "priority": 25,
         }
     ],
 }

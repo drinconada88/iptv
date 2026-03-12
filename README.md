@@ -26,32 +26,25 @@ Gestor web de listas M3U con canales AceStream. Permite editar, filtrar, reorden
 
 ```text
 iptv/
-|- app.py                     # Factory Flask: crea app, registra blueprints, arranca
+|- app.py                     # Entrypoint mínimo: from app import create_app
+|- app/
+|  |- __init__.py             # create_app + middlewares
+|  |- config.py               # Carga de settings/env
+|  |- api/                    # Capa HTTP (blueprints Flask)
+|  |  |- channels.py
+|  |  |- streaming.py
+|  |  |- health.py
+|  |  |- config.py
+|  |  |- sync.py
+|  |  |- backups.py
+|  |  `- auth.py
+|  |- services/               # Casos de uso (negocio)
+|  |- domain/                 # Lógica/modelos puros
+|  |- integrations/           # IO externo (Acexy, scrapers)
+|  |- persistence/            # Config/backup store
+|  `- web/                    # Carpeta reservada para templates/static
 |
-|- routes/                    # Capa HTTP — Flask Blueprints (solo request/response)
-|  |- channels_bp.py          # CRUD canales, save/export/load/sync, /live.m3u
-|  |- streaming_bp.py         # Proxy MPEG-TS, HLS, descarga .m3u por canal
-|  |- health_bp.py            # Estado de salud, ping, test manual
-|  |- config_bp.py            # Config get/set, estadísticas
-|  |- auth_bp.py              # Login/logout por sesion
-|  `- backups_bp.py           # Gestión de backups: listar, crear, restaurar, borrar
-|
-|- iptv_core/                 # Dominio y servicios (sin dependencia de Flask)
-|  |- constants.py            # Rutas, defaults, constantes
-|  |- state.py                # AppState singleton (canales + health en memoria)
-|  |- config_store.py         # I/O: config.json, health_cache.json
-|  |- m3u_codec.py            # Parser y escritor M3U (puras, sin estado)
-|  |- health_logic.py         # Funciones puras de salud (cfg, cooldowns, payload)
-|  |- health_service.py       # Orquestación: thread de auto-check, boot
-|  |- channel_service.py      # Negocio de canales: CRUD, save, sync web
-|  |- backup_service.py       # Versionado de lista_iptv.m3u (backup/restore/prune)
-|  |- sync_sources.py         # Orquestador de sync multi-fuente
-|  `- scrapers/               # Parsers dedicados por web
-|     |- new_era.py
-|     |- acestreamid.py
-|     |- generic.py
-|     `- common.py
-|  `- acexy_client.py         # Cliente HTTP robusto para Acexy/AceStream
+|- iptv_core/                 # Implementación legacy compatible (transición)
 |
 |- scripts/                   # Utilidades de línea de comandos (legacy, no usan Flask)
 |  |- editor.py               # Editor de canales con GUI Tkinter
@@ -65,9 +58,7 @@ iptv/
 |
 |- backups/                   # Snapshots automáticos (generados en runtime, no en git)
 `- tmp/                       # Ficheros temporales de descarga (no en git)
-`- templates/
-   |- index.html              # UI SPA (HTML/CSS/JS)
-   `- login.html              # Pantalla de login
+`- templates/                 # UI actual (index/login)
 ```
 
 ### Ficheros M3U: una sola fuente de verdad

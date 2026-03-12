@@ -47,6 +47,8 @@ def test_channel(idx: int) -> dict | None:
     if not (0 <= idx < len(state.channels)):
         return None
     ch = state.channels[idx]
+    if not bool(ch.get("enabled", True)):
+        return {"ok": False, "status": "disabled", "latency_ms": 0, "detail": "disabled"}
     peer = (ch.get("peer_full") or "").strip()
     if not peer:
         return {"ok": False, "status": "no_peer", "latency_ms": 0}
@@ -77,7 +79,7 @@ def test_batch(group: str | None = None, ids: list[int] | None = None) -> dict:
 
     target = []
     for ch in state.channels:
-        if (ch.get("status") or "").upper() == "DISABLED":
+        if not bool(ch.get("enabled", True)):
             continue
         if selected_ids and int(ch.get("id", -1)) not in selected_ids:
             continue
