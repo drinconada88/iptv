@@ -1,10 +1,15 @@
-"""Health-check routes: auto-check status, manual test, ping."""
-from flask import Blueprint, jsonify
+"""Health-check routes: status, manual test, batch test and ping."""
+from flask import Blueprint, jsonify, request
 
 from iptv_core.acexy_client import test_url
 from iptv_core.channel_service import ace_base
 from iptv_core.config_store import load_config
-from iptv_core.health_service import ensure_runtime_background, get_health_payload, test_channel
+from iptv_core.health_service import (
+    ensure_runtime_background,
+    get_health_payload,
+    test_batch,
+    test_channel,
+)
 from iptv_core.state import state
 
 health_bp = Blueprint("health", __name__)
@@ -47,5 +52,17 @@ def api_test_channel(idx: int):
 
 @health_bp.route("/api/test/batch", methods=["POST"])
 def api_test_batch():
-    """Batch tests are disabled; use per-channel manual tests."""
-    return jsonify({"ok": False, "error": "batch_disabled_use_manual_single_check"}), 410
+    """Batch check for all channels, group, or selected ids."""
+    payload = request.get_json(silent=True) or {}
+    group = str(payload.get("group", "")).strip() or None
+    raw_ids = payload.get("ids", [])
+    ids = raw_ids if isinstance(raw_ids, list) else []
+
+    if not state.manual_test_lock.acquire(blocking=False):
+        return jsonify({"ok": False, "status": "busy", "detail": "another_check_running"}), 429
+
+    try:
+        result = test_batch(group=group, ids=ids)
+        return jsonify(result)
+    finally:
+        state.manual_test_lock.release()

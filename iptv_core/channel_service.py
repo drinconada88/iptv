@@ -3,16 +3,14 @@
 All mutations go through this service so routes stay thin.
 """
 import copy
-import json
 import os
-import subprocess
-import sys
 
 from .config_store import load_config
-from .constants import BASE_DIR, EPG_URL, EXPORT_TMP, TMP_DIR
+from .constants import EPG_URL, EXPORT_TMP, TMP_DIR
 from .m3u_codec import load_m3u as codec_load_m3u
 from .m3u_codec import write_m3u as codec_write_m3u
 from .state import state
+from .sync_sources import run_sync_sources
 
 EDITABLE_FIELDS = [
     "channel", "group", "quality", "source",
@@ -54,6 +52,19 @@ def update_channel(idx: int, data: dict) -> dict | None:
         if field in data:
             ch[field] = data[field]
     return ch
+
+
+def batch_update_channels(ids: list[int], data: dict) -> tuple[list[dict], list[int]]:
+    """Apply the same patch to many channels, returning updated and missing ids."""
+    updated: list[dict] = []
+    missing: list[int] = []
+    for idx in ids:
+        ch = update_channel(idx, data)
+        if ch is None:
+            missing.append(idx)
+        else:
+            updated.append(ch)
+    return updated, missing
 
 
 def delete_channel(idx: int) -> bool:
@@ -145,45 +156,25 @@ def export_to_tmp() -> str:
 # ── Web sync ──────────────────────────────────────────────────────────────────
 
 def sync_from_web() -> dict:
-    script = os.path.join(BASE_DIR, "import_from_web.py")
-    if not os.path.isfile(script):
-        raise RuntimeError("import_from_web.py no encontrado")
-
-    try:
-        proc = subprocess.run(
-            [sys.executable, script, "--json"],
-            capture_output=True,
-            cwd=BASE_DIR,
-            timeout=90,
-        )
-    except subprocess.TimeoutExpired:
-        raise RuntimeError("Timeout descargando la web (90s)")
-
-    if proc.returncode != 0:
-        err = proc.stderr.decode("utf-8", errors="replace").strip() or "error desconocido"
-        raise RuntimeError(err)
-
-    stdout_text = proc.stdout.decode("utf-8", errors="replace").strip().lstrip("\ufeff")
-    start = stdout_text.find("{")
-    end = stdout_text.rfind("}")
-    if start == -1 or end == -1:
-        raise ValueError(f"Sin JSON en salida:\n{stdout_text[:400]}")
-
-    result = json.loads(stdout_text[start : end + 1])
-
+    cfg = load_config()
     known_peers = {ch.get("peer_full", "") for ch in state.channels}
+    result = run_sync_sources(cfg, known_peers)
+
     added = []
     for ch in result.get("new_channels", []):
-        if ch.get("peer_full") not in known_peers:
-            ch["id"] = len(state.channels)
-            state.channels.append(ch)
-            known_peers.add(ch["peer_full"])
-            added.append(ch)
+        peer = ch.get("peer_full", "")
+        if not peer or peer in known_peers:
+            continue
+        ch["id"] = len(state.channels)
+        state.channels.append(ch)
+        known_peers.add(peer)
+        added.append(ch)
 
     return {
         "found": result.get("found", 0),
         "added": len(added),
         "skipped": result.get("skipped", 0),
+        "sources": result.get("sources", []),
         "new": [
             {
                 "channel": c["channel"],

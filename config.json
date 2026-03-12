@@ -4,7 +4,7 @@
   "ace_path": "/ace/getstream?id=",
   "nas_path": "",
   "jellyfin_mode": false,
-  "auto_check_enabled": true,
+  "auto_check_enabled": false,
   "auto_check_minutes": 1.0,
   "auto_check_batch_size": 8,
   "auto_check_timeout_sec": 4

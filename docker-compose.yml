@@ -1,7 +1,7 @@
 services:
   iptv-manager:
     build:
-      context: /mnt/user/appdata/iptv-manager   # ruta donde subiste el código
+      context: /appdata/iptv-manager   # ruta del contenedor donde subiste el código
     container_name: iptv-manager
     restart: unless-stopped
     ports:

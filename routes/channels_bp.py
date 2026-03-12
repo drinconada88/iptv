@@ -6,6 +6,7 @@ from flask import Blueprint, Response, jsonify, render_template, request, send_f
 
 from iptv_core.channel_service import (
     ace_base,
+    batch_update_channels,
     create_channel,
     delete_channel,
     duplicate_channel,
@@ -44,6 +45,35 @@ def api_update(idx: int):
     if ch is None:
         return jsonify({"ok": False, "error": "Not found"}), 404
     return jsonify({"ok": True, "channel": ch})
+
+
+@channels_bp.route("/api/channels/batch", methods=["PUT"])
+def api_batch_update():
+    payload = request.get_json(silent=True) or {}
+    ids = payload.get("ids", [])
+    patch = payload.get("patch", {})
+
+    if not isinstance(ids, list) or not ids:
+        return jsonify({"ok": False, "error": "ids debe ser una lista no vacia"}), 400
+    if not isinstance(patch, dict) or not patch:
+        return jsonify({"ok": False, "error": "patch debe ser un objeto no vacio"}), 400
+
+    normalized_ids = []
+    for raw_id in ids:
+        try:
+            normalized_ids.append(int(raw_id))
+        except (TypeError, ValueError):
+            return jsonify({"ok": False, "error": f"id invalido: {raw_id}"}), 400
+
+    updated, missing = batch_update_channels(normalized_ids, patch)
+    return jsonify(
+        {
+            "ok": True,
+            "updated": updated,
+            "updated_count": len(updated),
+            "missing": missing,
+        }
+    )
 
 
 @channels_bp.route("/api/channel/<int:idx>", methods=["DELETE"])

@@ -13,7 +13,8 @@ Gestor web de listas M3U con canales AceStream. Permite editar, filtrar, reorden
 - Reordenacion drag and drop con persistencia en backend.
 - Sync web de NEW ERA con deteccion de duplicados por peer hash.
 - Test de streams manual por canal (`CHECK` -> `ONLINE/OFFLINE`) con bloqueo de concurrencia para no saturar Acexy.
-- Auto-check incremental y seguro en segundo plano (sin barridos masivos).
+- Comprobación diaria automática a las `05:00` (barrido completo, tipo cron).
+- Comprobación manual por canal, por grupo o de todos los canales.
 - Cabecera con contadores de salud: `Online`, `Offline`, `No probados`.
 - Reproductor integrado y descarga M3U por canal.
 - Endpoint dinamico `live.m3u` para compartir con clientes IPTV.
@@ -32,6 +33,7 @@ iptv/
 |  |- streaming_bp.py         # Proxy MPEG-TS, HLS, descarga .m3u por canal
 |  |- health_bp.py            # Estado de salud, ping, test manual
 |  |- config_bp.py            # Config get/set, estadísticas
+|  |- auth_bp.py              # Login/logout por sesion
 |  `- backups_bp.py           # Gestión de backups: listar, crear, restaurar, borrar
 |
 |- iptv_core/                 # Dominio y servicios (sin dependencia de Flask)
@@ -43,6 +45,12 @@ iptv/
 |  |- health_service.py       # Orquestación: thread de auto-check, boot
 |  |- channel_service.py      # Negocio de canales: CRUD, save, sync web
 |  |- backup_service.py       # Versionado de lista_iptv.m3u (backup/restore/prune)
+|  |- sync_sources.py         # Orquestador de sync multi-fuente
+|  `- scrapers/               # Parsers dedicados por web
+|     |- new_era.py
+|     |- acestreamid.py
+|     |- generic.py
+|     `- common.py
 |  `- acexy_client.py         # Cliente HTTP robusto para Acexy/AceStream
 |
 |- scripts/                   # Utilidades de línea de comandos (legacy, no usan Flask)
@@ -58,7 +66,8 @@ iptv/
 |- backups/                   # Snapshots automáticos (generados en runtime, no en git)
 `- tmp/                       # Ficheros temporales de descarga (no en git)
 `- templates/
-   `- index.html              # UI SPA (HTML/CSS/JS)
+   |- index.html              # UI SPA (HTML/CSS/JS)
+   `- login.html              # Pantalla de login
 ```
 
 ### Ficheros M3U: una sola fuente de verdad
@@ -123,10 +132,37 @@ La app guarda configuracion en `config.json` con estos campos:
 - `auto_check_minutes` (float, intervalo entre ciclos)
 - `auto_check_batch_size` (tamano de lote por ciclo)
 - `auto_check_timeout_sec` (timeout por check)
+- `sync_sources` (lista de fuentes web para `/api/sync`)
+
+> Nota: la UI ahora usa revisión diaria (05:00) y comprobación manual masiva.
+
+### Sync multi-fuente
+
+`/api/sync` ejecuta todas las fuentes habilitadas en `sync_sources` (ordenadas por `priority`), deduplica por `peer_full` y añade solo canales nuevos.
+
+Cada fuente admite:
+
+- `id`, `name`, `enabled`
+- `parser` (`new_era`, `acestreamid` o `generic`)
+- `url`
+- `timeout_sec`
+- `priority`
 
 Tambien puedes usar la variable de entorno `IPTV_DATA_DIR` para guardar `lista_iptv.m3u`, `config.json` y `health_cache.json` en otra ruta (ej. Docker o NAS).
 
 En Docker, si `IPTV_DATA_DIR` apunta a un volumen y faltan esos ficheros, la app intenta inicializarlos automaticamente desde la raiz del proyecto (`/app`) en el primer arranque. No sobreescribe ficheros ya existentes en el volumen.
+
+### Login basico (sesion)
+
+La UI y las rutas `/api/*` requieren login por sesion.  
+`/live.m3u` se mantiene publico para clientes IPTV (Jellyfin, VLC, etc.).
+
+Variables de entorno disponibles:
+
+- `IPTV_AUTH_ENABLED` (`1`/`0`, por defecto `1`)
+- `IPTV_ADMIN_USER` (por defecto `admin`)
+- `IPTV_ADMIN_PASS` (por defecto `admin`)
+- `IPTV_SECRET_KEY` (recomendado definirla en produccion)
 
 ---
 
@@ -202,6 +238,9 @@ Si publicas el endpoint en internet, evita direcciones privadas (`192.168.x.x`) 
 | `POST` | `/api/config` | Guarda config |
 | `GET` | `/api/health` | Estado de salud de canales (cacheado) |
 | `GET` | `/live.m3u` | M3U dinamico compartible |
+| `GET` | `/login` | Pantalla de acceso |
+| `POST` | `/login` | Inicio de sesion |
+| `POST` | `/logout` | Cierre de sesion |
 | `GET` | `/api/backups` | Lista backups disponibles |
 | `POST` | `/api/backups` | Crea backup manual (body: `{"label": "..."}`) |
 | `POST` | `/api/backups/<file>/restore` | Restaura un backup (recarga canales en memoria) |

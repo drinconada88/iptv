@@ -28,6 +28,8 @@ def api_config_set():
         cfg["jellyfin_mode"] = bool(data["jellyfin_mode"])
     if "auto_check_enabled" in data:
         cfg["auto_check_enabled"] = bool(data["auto_check_enabled"])
+    if "sync_sources" in data and isinstance(data["sync_sources"], list):
+        cfg["sync_sources"] = data["sync_sources"]
 
     _clamp_float(cfg, data, "auto_check_minutes", lo=0.5)
     _clamp_int(cfg, data, "auto_check_batch_size", lo=1, hi=25)

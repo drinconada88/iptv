@@ -86,13 +86,17 @@ def health_payload(channels: list, cache: dict, meta: dict, cfg: dict) -> dict:
         rows[idx] = cache.get(peer, {"status": "unknown", "latency_ms": 0, "detail": "", "checked_at": 0})
 
     last = int(meta.get("last_run_at", 0) or 0)
+    next_run = int(meta.get("next_run_in_sec", 0) or 0)
+    if not next_run and last:
+        next_run = max(0, int(cfg["minutes"] * 60) - (now - last))
     return {
         "ok": True,
         "running": bool(meta.get("running", False)),
         "last_run_at": last,
         "last_batch_count": int(meta.get("last_batch_count", 0) or 0),
+        "last_run_type": str(meta.get("last_run_type", "") or ""),
         "interval_minutes": cfg["minutes"],
-        "next_run_in_sec": max(0, int(cfg["minutes"] * 60) - (now - last)) if last else 0,
+        "next_run_in_sec": next_run,
         "results": rows,
     }
 

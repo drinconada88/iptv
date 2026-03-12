@@ -575,7 +575,7 @@ tbody tr.row-timeout { box-shadow: inset 3px 0 0 var(--peach); }
 .player-url-row { display: flex; align-items: center; gap: 8px; }
 .player-url { font-family: 'Consolas', monospace; font-size: 11px; color: var(--sky); word-break: break-all; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* ─── Responsive (mobile/tablet) ─────────────────────────────────────────── */
+/* ─── Responsive (tablet ≤ 980px) ────────────────────────────────────────── */
 @media (max-width: 980px) {
   #app {
     grid-template-columns: 1fr;
@@ -592,10 +592,7 @@ tbody tr.row-timeout { box-shadow: inset 3px 0 0 var(--peach); }
   #header .sep { display: none; }
   .header-badges { gap: 6px; justify-content: flex-start; padding: 4px 0; width: 100%; }
 
-  .badge {
-    font-size: 11px;
-    padding: 3px 8px;
-  }
+  .badge { font-size: 11px; padding: 3px 8px; }
 
   .header-actions {
     width: 100%;
@@ -603,10 +600,7 @@ tbody tr.row-timeout { box-shadow: inset 3px 0 0 var(--peach); }
     overflow-x: auto;
     padding-bottom: 2px;
   }
-  .header-actions .btn {
-    flex: 0 0 auto;
-    white-space: nowrap;
-  }
+  .header-actions .btn { flex: 0 0 auto; white-space: nowrap; }
 
   #sidebar {
     border-right: none;
@@ -616,22 +610,10 @@ tbody tr.row-timeout { box-shadow: inset 3px 0 0 var(--peach); }
     overflow-y: hidden;
   }
   .sidebar-title { display: none; }
-  #group-list {
-    display: flex;
-    gap: 6px;
-    min-width: max-content;
-  }
-  .group-item {
-    flex: 0 0 auto;
-    white-space: nowrap;
-    padding: 6px 10px;
-  }
+  #group-list { display: flex; gap: 6px; min-width: max-content; }
+  .group-item { flex: 0 0 auto; white-space: nowrap; padding: 6px 10px; }
 
-  #toolbar {
-    padding: 8px 10px;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
+  #toolbar { padding: 8px 10px; gap: 8px; flex-wrap: wrap; }
   .search-wrap { flex: 1 1 100%; max-width: none; }
   #statusFilter { flex: 1 1 48%; min-width: 0; }
   .toolbar-sep { display: none; }
@@ -641,31 +623,157 @@ tbody tr.row-timeout { box-shadow: inset 3px 0 0 var(--peach); }
   #table-wrap { overflow: auto; }
   table { min-width: 640px; }
 
-  /* En móvil priorizamos Estado + Canal + Peer + Acciones */
-  #channelTable th:nth-child(1),
-  #channelTable td:nth-child(1),
-  #channelTable th:nth-child(4),
-  #channelTable td:nth-child(4),
-  #channelTable th:nth-child(5),
-  #channelTable td:nth-child(5),
-  #channelTable th:nth-child(6),
-  #channelTable td:nth-child(6) {
-    display: none;
-  }
+  #channelTable th:nth-child(1), #channelTable td:nth-child(1),
+  #channelTable th:nth-child(4), #channelTable td:nth-child(4),
+  #channelTable th:nth-child(5), #channelTable td:nth-child(5),
+  #channelTable th:nth-child(6), #channelTable td:nth-child(6) { display: none; }
 
   tbody td { padding: 0 8px; }
   .row-actions { opacity: 1; }
   .icon-btn { width: 24px; height: 24px; }
 
   #bulkBar {
-    left: 8px;
-    right: 8px;
+    left: 8px; right: 8px;
     bottom: calc(8px + env(safe-area-inset-bottom));
-    padding: 7px 9px;
-    overflow-x: auto;
-    white-space: nowrap;
+    padding: 7px 9px; overflow-x: auto; white-space: nowrap;
   }
 }
+
+/* ─── Mobile (≤ 640px) — card layout ─────────────────────────────────────── */
+@media (max-width: 640px) {
+  :root { --header: auto; }
+
+  #app { height: 100dvh; }
+
+  .header-logo-area { width: auto; padding: 0; }
+  #header .logo { font-size: 15px; }
+  #header { padding: 8px 12px 4px; gap: 0; }
+
+  /* Ocultar badges menos relevantes en móvil */
+  #badge-test, #badge-disabled, #badge-unknown, .sep-health { display: none; }
+  .badge { font-size: 10px; padding: 2px 7px; }
+
+  .header-actions { gap: 5px; padding-right: 0; }
+  .header-actions .btn { padding: 5px 10px; font-size: 11px; gap: 4px; }
+  .header-actions .btn svg { width: 13px; height: 13px; }
+  /* Ocultar texto de botones que tienen icono — dejar sólo icono en móvil */
+  .header-actions .btn span.btn-label { display: none; }
+
+  /* Sidebar — scrollable horizontal */
+  #sidebar { padding: 6px 8px; }
+  .group-item { padding: 5px 9px; font-size: 12px; }
+
+  /* Toolbar simplificado */
+  #toolbar { padding: 8px 10px; gap: 8px; flex-wrap: wrap; }
+  .search-wrap { flex: 1 1 calc(100% - 80px); max-width: none; min-width: 0; }
+  .btn.btn-ghost[onclick*="selectAllVisible"],
+  .btn.btn-ghost[onclick*="clearSelection"] { display: none; }
+
+  /* Ocultar tabla, el JS inyecta #channel-cards dentro de table-wrap */
+  #channelTable { display: none !important; }
+  #table-wrap { overflow-y: auto; overflow-x: hidden; }
+
+  /* Status bar oculta */
+  #statusbar { display: none; }
+
+  /* Modal — sheet desde abajo */
+  .modal-overlay { align-items: flex-end; }
+  .modal {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    max-height: 92dvh;
+    border-radius: 16px 16px 0 0 !important;
+    margin: 0;
+  }
+
+  /* Form — 1 columna */
+  .form-row { grid-template-columns: 1fr; }
+
+  /* Toast — ancho completo */
+  #toasts { right: 8px; left: 8px; align-items: stretch; }
+  .toast { max-width: none; }
+
+  /* Bulk bar */
+  #bulkBar { left: 8px; right: 8px; bottom: 8px; }
+}
+
+/* ─── Channel cards (inyectadas por JS en móvil) ──────────────────────────── */
+#channel-cards {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.channel-card {
+  background: var(--mantle);
+  border: 1px solid var(--s0);
+  border-left: 3px solid var(--s0);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  cursor: pointer;
+  transition: background .1s, border-color .15s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.channel-card:active { background: var(--s0); }
+.channel-card.card-disabled { opacity: .45; }
+.channel-card.selected-row {
+  background: rgba(137,180,250,.07);
+  border-color: rgba(137,180,250,.35);
+}
+.channel-card.row-online  { border-left-color: var(--green); }
+.channel-card.row-offline { border-left-color: var(--red); }
+.channel-card.row-timeout { border-left-color: var(--peach); }
+
+.card-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+.card-name {
+  font-size: 14px;
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.card-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.card-tag {
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: var(--s0);
+  color: var(--sub0);
+}
+.card-group-tag   { color: var(--blue);  background: rgba(137,180,250,.12); }
+.card-quality-tag { color: var(--mauve); background: rgba(203,166,247,.12); }
+.card-source-tag  { color: var(--teal);  background: rgba(148,226,213,.10); }
+
+.card-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+.card-bottom .icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+}
+.card-bottom .icon-btn svg { width: 16px; height: 16px; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/mpegts.js@latest/dist/mpegts.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -760,20 +868,23 @@ tbody tr.row-timeout { box-shadow: inset 3px 0 0 var(--peach); }
       <span id="badge-unknown" class="badge badge-unknown filterable" title="Filtrar canales sin probar" onclick="setHealthFilter('unknown')">— No probados</span>
     </div>
     <div class="header-actions">
-      <button class="btn btn-secondary" onclick="exportM3u()">
-        <svg><use href="#i-download"/></svg> Exportar
+      <button class="btn btn-secondary" onclick="exportM3u()" title="Exportar M3U">
+        <svg><use href="#i-download"/></svg><span class="btn-label"> Exportar</span>
       </button>
-      <button class="btn btn-secondary" id="syncBtn" onclick="syncWeb()">
-        <svg><use href="#i-refresh"/></svg> Sync web
+      <button class="btn btn-secondary" id="syncBtn" onclick="syncWeb()" title="Sync web">
+        <svg><use href="#i-refresh"/></svg><span class="btn-label"> Sync web</span>
       </button>
-      <button class="btn btn-secondary" onclick="openBackupsModal()">
-        <svg><use href="#i-folder"/></svg> Backups
+      <button class="btn btn-secondary" onclick="openBackupsModal()" title="Backups">
+        <svg><use href="#i-folder"/></svg><span class="btn-label"> Backups</span>
       </button>
-      <button class="btn btn-secondary" onclick="openCreate()">
-        <svg><use href="#i-plus"/></svg> Nuevo canal
+      <button class="btn btn-secondary" onclick="openCreate()" title="Nuevo canal">
+        <svg><use href="#i-plus"/></svg><span class="btn-label"> Nuevo canal</span>
       </button>
-      <button class="btn btn-primary" onclick="saveM3u()">
-        <svg><use href="#i-save"/></svg> Guardar M3U
+      <button class="btn btn-primary" onclick="saveM3u()" title="Guardar M3U">
+        <svg><use href="#i-save"/></svg><span class="btn-label"> Guardar M3U</span>
+      </button>
+      <button class="btn btn-ghost" onclick="logout()" title="Cerrar sesión">
+        <span class="btn-label">Salir</span>
       </button>
     </div>
   </header>
@@ -817,27 +928,10 @@ tbody tr.row-timeout { box-shadow: inset 3px 0 0 var(--peach); }
           <svg style="width:12px;height:12px"><use href="#i-check"/></svg>
         </button>
       </div>
-      <!-- NAS path: configured directly in config.json (nas_path key) -->
-      <!-- Health auto-check config -->
-      <div class="health-widget" title="Comprobación automática de salud de peers">
-        <svg style="width:13px;height:13px;color:var(--ov1);flex-shrink:0"><use href="#i-refresh"/></svg>
-        <span class="health-widget-label">Auto</span>
-        <label class="toggle-wrap" title="Activar/desactivar comprobación automática">
-          <input type="checkbox" id="cfgAutoEnabled" onchange="saveConfig()">
-          <span class="toggle-slider"></span>
-        </label>
-        <span class="health-sep">|</span>
-        <div class="num-stepper" title="Intervalo entre ciclos (minutos)">
-          <button class="step-btn" onclick="stepNum('cfgAutoMinutes',-0.5)">−</button>
-          <input id="cfgAutoMinutes" class="health-num-input" type="number"
-                 min="0.5" max="120" step="0.5" placeholder="2">
-          <button class="step-btn" onclick="stepNum('cfgAutoMinutes', 0.5)">+</button>
-        </div>
-        <span class="health-widget-label">min</span>
-        <button class="proxy-save-btn" id="healthSaveBtn" onclick="saveConfig()" title="Guardar configuración de health">
-          <svg style="width:12px;height:12px"><use href="#i-check"/></svg>
-        </button>
-      </div>
+      <!-- Auto-check continuo desactivado: se usa revisión diaria (05:00). -->
+      <button class="btn btn-ghost btn-sm" id="btnCheckAll" onclick="checkAllConnections()" title="Comprobar conexión de todos los canales">
+        Comprobar conexión (todos)
+      </button>
       <button class="btn btn-ghost btn-sm" onclick="selectAllVisible()" title="Seleccionar todas las filas visibles">
         Seleccionar todo
       </button>
@@ -850,6 +944,7 @@ tbody tr.row-timeout { box-shadow: inset 3px 0 0 var(--peach); }
     <div id="bulkBar">
       <span id="bulkCount">0 seleccionados</span>
       <div style="width:1px;height:16px;background:var(--s1)"></div>
+      <button class="btn btn-ghost btn-sm" onclick="checkSelectedConnections()">Comprobar conexión seleccionados</button>
       <button class="btn btn-ghost btn-sm" onclick="bulkSetStatus('MAIN')">→ MAIN</button>
       <button class="btn btn-ghost btn-sm" onclick="bulkSetStatus('BACKUP')">→ BACKUP</button>
       <button class="btn btn-ghost btn-sm" onclick="bulkSetStatus('DISABLED')">→ Deshabilitar</button>
@@ -886,7 +981,7 @@ tbody tr.row-timeout { box-shadow: inset 3px 0 0 var(--peach); }
     <!-- Status bar -->
     <div id="statusbar">
       <span id="sb-path" title="Ruta del fichero M3U">—</span>
-      <span id="sb-health" title="Última comprobación automática">Health: —</span>
+      <span id="sb-health" title="Estado de comprobaciones de conexión">Health: —</span>
     </div>
   </main>
 </div>
@@ -1092,10 +1187,7 @@ async function loadConfig() {
   const cfg = await res.json();
   document.getElementById('cfgHost').value  = cfg.ace_host || '';
   document.getElementById('cfgPort').value  = cfg.ace_port || '';
-  document.getElementById('cfgAutoEnabled').checked = !!cfg.auto_check_enabled;
-  document.getElementById('cfgAutoMinutes').value   = cfg.auto_check_minutes ?? 2;
   _aceBase = `http://${cfg.ace_host}:${cfg.ace_port}${cfg.ace_path}`;
-  _applyHealthWidgetStyle(!!cfg.auto_check_enabled);
 }
 
 async function saveConfig() {
@@ -1103,27 +1195,21 @@ async function saveConfig() {
   const port = document.getElementById('cfgPort').value.trim();
   if (!host || !port) { toast('Introduce IP y puerto', 'error'); return; }
 
-  const autoEnabled = document.getElementById('cfgAutoEnabled').checked;
-  const autoMinutes = parseFloat(document.getElementById('cfgAutoMinutes').value) || 2;
-
   const res = await fetch('/api/config', {
     method: 'POST', headers: {'Content-Type':'application/json'},
     body: JSON.stringify({
       ace_host: host, ace_port: port,
-      auto_check_enabled: autoEnabled,
-      auto_check_minutes: autoMinutes,
     })
   });
   const r = await res.json();
   if (r.ok) {
     _aceBase = r.ace_base;
-    ['proxySaveBtn', 'healthSaveBtn'].forEach(id => {
-      const btn = document.getElementById(id);
-      if (btn) { btn.classList.add('saved'); setTimeout(() => btn.classList.remove('saved'), 2000); }
-    });
-    _applyHealthWidgetStyle(autoEnabled);
-    const healthTxt = autoEnabled ? ` · Auto ${autoMinutes}min` : ' · Auto OFF';
-    toast(`Config guardada${healthTxt}`, 'success');
+    const btn = document.getElementById('proxySaveBtn');
+    if (btn) {
+      btn.classList.add('saved');
+      setTimeout(() => btn.classList.remove('saved'), 2000);
+    }
+    toast('Config guardada', 'success');
   } else {
     toast('Error guardando configuración', 'error');
   }
@@ -1272,9 +1358,10 @@ function applyFilters() {
 
     if (activeHealthFilter) {
       const hs = String(_streamHealth.get(ch.id)?.status || 'unknown').toLowerCase();
+      const isDisabled = (ch.status || '').toUpperCase() === 'DISABLED' || hs === 'disabled';
       const isOnline  = hs === 'online';
       const isOffline = hs === 'offline' || hs === 'timeout' || hs === 'error';
-      const isUnknown = !isOnline && !isOffline;
+      const isUnknown = !isOnline && !isOffline && !isDisabled;
       if (activeHealthFilter === 'online'  && !isOnline)  return false;
       if (activeHealthFilter === 'offline' && !isOffline) return false;
       if (activeHealthFilter === 'unknown' && !isUnknown) return false;
@@ -1310,7 +1397,7 @@ function sortBy(col) {
   applyFilters();
 }
 
-// ── Render table ─────────────────────────────────────────────────────────────
+// ── Helpers de renderizado ────────────────────────────────────────────────────
 function hl(text, q) {
   if (!q || !text) return escHtml(text || '');
   const re = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
@@ -1322,7 +1409,75 @@ const STATUS_DOT  = { MAIN:'dot-main', BACKUP:'dot-backup', TEST:'dot-test', DIS
 const STATUS_PILL = { MAIN:'pill-main', BACKUP:'pill-backup', TEST:'pill-test', DISABLED:'pill-disabled' };
 const STATUS_OPTIONS = ['MAIN', 'BACKUP', 'TEST', 'DISABLED'];
 
+// ── Mobile detection ──────────────────────────────────────────────────────────
+function isMobile() { return window.innerWidth <= 640; }
+
+// ── Render cards (móvil) ──────────────────────────────────────────────────────
+function renderCards(rows, q = '') {
+  const wrap  = document.getElementById('table-wrap');
+  const empty = document.getElementById('emptyState');
+
+  let cardsEl = document.getElementById('channel-cards');
+  if (!cardsEl) {
+    cardsEl = document.createElement('div');
+    cardsEl.id = 'channel-cards';
+    wrap.insertBefore(cardsEl, wrap.firstChild);
+  }
+
+  if (!rows.length) {
+    cardsEl.innerHTML = '';
+    empty.style.display = 'flex';
+    return;
+  }
+  empty.style.display = 'none';
+
+  cardsEl.innerHTML = rows.map(ch => {
+    const dis    = ch.status === 'DISABLED' ? ' card-disabled' : '';
+    const selCls = _selectedIds.has(ch.id) ? ' selected-row' : '';
+    const metaTags = [
+      ch.group    ? `<span class="card-tag card-group-tag">${hl(ch.group, q)}</span>`  : '',
+      ch.quality  ? `<span class="card-tag card-quality-tag">${ch.quality}</span>`      : '',
+      ch.source   ? `<span class="card-tag card-source-tag">${hl(ch.source, q)}</span>`: '',
+      ch.peer_full ? `<span class="peer-chip" style="font-size:11px">${ch.peer_full.slice(-4)}</span>` : '',
+    ].filter(Boolean).join('');
+
+    return `<div class="channel-card${dis}${selCls}" data-id="${ch.id}">
+      <div class="card-top">
+        ${_statusControlHtml(ch)}
+        ${_streamPillHtml(ch.id)}
+        <span class="card-name">${hl(ch.channel, q)}</span>
+      </div>
+      ${metaTags ? `<div class="card-meta">${metaTags}</div>` : ''}
+      <div class="card-bottom">
+        <button class="icon-btn" title="Editar" onclick="openEdit(${ch.id});event.stopPropagation()"><svg><use href="#i-edit"/></svg></button>
+        ${ch.peer_full ? `<button class="icon-btn" title="Reproductor" onclick="openPlayer(${ch.id});event.stopPropagation()"><svg><use href="#i-monitor"/></svg></button>` : ''}
+        ${ch.status !== 'DISABLED'
+          ? `<button class="icon-btn danger" title="Deshabilitar" onclick="toggleChannelEnabled(${ch.id},false);event.stopPropagation()"><svg><use href="#i-stop"/></svg></button>`
+          : `<button class="icon-btn" title="Habilitar" onclick="toggleChannelEnabled(${ch.id},true);event.stopPropagation()"><svg><use href="#i-check"/></svg></button>`
+        }
+        <button class="icon-btn" title="Duplicar como BACKUP" onclick="duplicateChannel(${ch.id});event.stopPropagation()"><svg><use href="#i-copy"/></svg></button>
+        <button class="icon-btn danger" title="Eliminar" onclick="confirmDelete(${ch.id});event.stopPropagation()"><svg><use href="#i-trash"/></svg></button>
+      </div>
+    </div>`;
+  }).join('');
+
+  cardsEl.querySelectorAll('.channel-card').forEach(card => {
+    card.addEventListener('click', e => {
+      if (e.target.closest('button') || e.target.closest('select')) return;
+      toggleRowSelect(parseInt(card.dataset.id, 10));
+    });
+  });
+
+  _paintVisibleStreamPills();
+}
+
+// ── Render table ──────────────────────────────────────────────────────────────
 function renderTable(rows, q = '') {
+  if (isMobile()) { renderCards(rows, q); return; }
+  // Al volver a desktop, limpiar las cards
+  const cardsEl = document.getElementById('channel-cards');
+  if (cardsEl) cardsEl.innerHTML = '';
+
   const tbody = document.getElementById('channelBody');
   const empty = document.getElementById('emptyState');
   if (!rows.length) {
@@ -1639,6 +1794,15 @@ function exportM3u() {
   toast('Descargando lista M3U…', 'info');
 }
 
+async function logout() {
+  try {
+    await fetch('/logout', { method: 'POST' });
+  } catch (_) {
+    // Ignore network errors: redirect anyway.
+  }
+  window.location.href = '/login';
+}
+
 // ── Backups ───────────────────────────────────────────────────────────────────
 function openBackupsModal() {
   document.getElementById('backupsModal').classList.add('open');
@@ -1814,7 +1978,7 @@ function toggleRowSelect(id, checked) {
   if (next) _selectedIds.add(id);
   else      _selectedIds.delete(id);
   _updateBulkBar();
-  const row = document.querySelector(`tr[data-id="${id}"]`);
+  const row = document.querySelector(`tr[data-id="${id}"], .channel-card[data-id="${id}"]`);
   if (row) row.classList.toggle('selected-row', next);
 }
 
@@ -1823,7 +1987,7 @@ function toggleSelectAll(checked) {
     if (checked) _selectedIds.add(ch.id);
     else         _selectedIds.delete(ch.id);
   });
-  document.querySelectorAll('tbody tr').forEach(tr => tr.classList.toggle('selected-row', checked));
+  document.querySelectorAll('tbody tr, .channel-card').forEach(tr => tr.classList.toggle('selected-row', checked));
   _updateBulkBar();
 }
 
@@ -1833,7 +1997,7 @@ function selectAllVisible() {
 
 function clearSelection() {
   _selectedIds.clear();
-  document.querySelectorAll('tbody tr').forEach(tr => tr.classList.remove('selected-row'));
+  document.querySelectorAll('tbody tr, .channel-card').forEach(tr => tr.classList.remove('selected-row'));
   _updateBulkBar();
 }
 
@@ -1847,19 +2011,21 @@ function _updateBulkBar() {
 async function bulkSetStatus(status) {
   if (!_selectedIds.size) return;
   const ids = [..._selectedIds];
-  await Promise.all(ids.map(id => {
-    const ch = allChannels.find(c => c.id === id);
-    if (!ch) return;
-    return fetch(`/api/channel/${id}`, {
-      method: 'PUT', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ ...ch, status })
-    });
-  }));
+  const res = await fetch('/api/channels/batch', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids, patch: { status } })
+  });
+  const r = await res.json();
+  if (!r.ok) {
+    toast(r.error || 'No se pudo actualizar en lote', 'error');
+    return;
+  }
   await loadChannels();
   // Restaurar selección visual
   ids.forEach(id => {
     _selectedIds.add(id);
-    const row = document.querySelector(`tr[data-id="${id}"]`);
+    const row = document.querySelector(`tr[data-id="${id}"], .channel-card[data-id="${id}"]`);
     if (row) row.classList.add('selected-row');
   });
   _updateBulkBar();
@@ -1870,14 +2036,16 @@ async function bulkSetGroup() {
   const group = document.getElementById('bulkGroupInput').value.trim();
   if (!group || !_selectedIds.size) return;
   const ids = [..._selectedIds];
-  await Promise.all(ids.map(id => {
-    const ch = allChannels.find(c => c.id === id);
-    if (!ch) return;
-    return fetch(`/api/channel/${id}`, {
-      method: 'PUT', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ ...ch, group })
-    });
-  }));
+  const res = await fetch('/api/channels/batch', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids, patch: { group } })
+  });
+  const r = await res.json();
+  if (!r.ok) {
+    toast(r.error || 'No se pudo actualizar en lote', 'error');
+    return;
+  }
   await loadChannels();
   document.getElementById('bulkGroupInput').value = '';
   clearSelection();
@@ -1999,7 +2167,7 @@ function _paintPill(id) {
   el.className = `stream-pill ${view.cls}`;
   el.textContent = view.txt;
   el.title = view.title;
-  const row = document.querySelector(`tr[data-id="${id}"]`);
+  const row = document.querySelector(`tr[data-id="${id}"], .channel-card[data-id="${id}"]`);
   if (row) {
     row.classList.remove('row-online', 'row-offline', 'row-timeout');
     if (view.rowCls) row.classList.add(view.rowCls);
@@ -2052,12 +2220,13 @@ async function loadHealthStatus() {
     _autoCheckRunning = !!data.running;
     _setChecksDisabled();
     const sec = Number(data.next_run_in_sec || 0);
-    const nextTxt = sec ? ` · next ${sec}s` : '';
+    const nextTxt = sec ? ` · siguiente ${Math.ceil(sec / 60)}m` : '';
     const batch = Number(data.last_batch_count || 0);
     const runTxt = _autoCheckRunning ? ' · running...' : '';
+    const typeTxt = data.last_run_type ? ` · ${data.last_run_type}` : '';
     const batchTxt = ` · batch ${batch}`;
     document.getElementById('sb-health').textContent =
-      `Health: ${_fmtTime(Number(data.last_run_at || 0))}${batchTxt}${nextTxt}${runTxt}`;
+      `Health: ${_fmtTime(Number(data.last_run_at || 0))}${batchTxt}${typeTxt}${nextTxt}${runTxt}`;
   } catch (_) {
     // mantener ultimo estado visual cacheado
   }
@@ -2065,6 +2234,13 @@ async function loadHealthStatus() {
 
 function _setChecksDisabled() {
   const disabled = _manualCheckRunning || _autoCheckRunning;
+  ['btnCheckAll'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.disabled = disabled;
+    btn.style.opacity = disabled ? '0.55' : '';
+    btn.style.cursor = disabled ? 'not-allowed' : '';
+  });
   document.querySelectorAll('.stream-pill[id^="spill-"]').forEach(el => {
     el.classList.toggle('disabled', disabled);
     if (!disabled) return;
@@ -2072,6 +2248,65 @@ function _setChecksDisabled() {
       el.title = 'Espera: hay otra comprobación en curso';
     }
   });
+}
+
+async function _probeBatch(group = '', ids = []) {
+  if (_manualCheckRunning || _autoCheckRunning) {
+    toast('Ya hay una comprobación en curso', 'info');
+    return;
+  }
+  _manualCheckRunning = true;
+  _setChecksDisabled();
+  const scopeLabel = ids.length ? `${ids.length} seleccionados` : (group ? `grupo "${group}"` : 'todos los canales');
+  toast(`Comprobando ${scopeLabel}...`, 'info');
+  try {
+    const res = await fetch('/api/test/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ group, ids }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) {
+      toast(data.detail || data.error || 'Error en comprobación masiva', 'error');
+      return;
+    }
+    const results = data.results || {};
+    Object.entries(results).forEach(([id, info]) => {
+      const n = Number(id);
+      _streamHealth.set(n, {
+        status: info.status || 'unknown',
+        latency_ms: Number(info.latency_ms || 0),
+        detail: info.detail || '',
+      });
+      _paintPill(n);
+    });
+    _paintVisibleStreamPills();
+    _refreshHealthHeaderBadges();
+    await pollHealth();
+    const c = data.status_counts || {};
+    toast(
+      `Comprobación completada (${scopeLabel}) · Online ${c.online || 0}, Offline ${c.offline || 0}, No probados ${c.unknown || 0}`,
+      'success'
+    );
+  } catch (_) {
+    toast('Error comprobando conexiones', 'error');
+  } finally {
+    _manualCheckRunning = false;
+    _setChecksDisabled();
+  }
+}
+
+function checkAllConnections() {
+  _probeBatch('');
+}
+
+function checkSelectedConnections() {
+  const ids = [..._selectedIds];
+  if (!ids.length) {
+    toast('No hay canales seleccionados', 'info');
+    return;
+  }
+  _probeBatch('', ids);
 }
 
 async function _probeOne(id, userTriggered = false, e = null) {
@@ -2436,7 +2671,7 @@ async function syncWeb() {
   document.getElementById('syncBody').innerHTML = `
     <div style="display:flex;align-items:center;gap:12px;padding:20px 0">
       <div class="spinner"></div>
-      <span style="color:var(--sub0)">Descargando canales de la web NEW ERA…</span>
+      <span style="color:var(--sub0)">Sincronizando fuentes web configuradas…</span>
     </div>`;
   document.getElementById('syncFooter').style.display = 'none';
   document.getElementById('syncSaveBtn').style.display = 'none';
@@ -2452,6 +2687,7 @@ async function syncWeb() {
           <b>Error:</b> ${escHtml(data.error || 'desconocido')}
         </div>`;
     } else if (data.added === 0) {
+      const okSources = Array.isArray(data.sources) ? data.sources.filter(s => s.ok).length : 0;
       document.getElementById('syncBody').innerHTML = `
         <div style="padding:16px 0;text-align:center">
           <div style="font-size:32px;margin-bottom:8px">✓</div>
@@ -2460,8 +2696,13 @@ async function syncWeb() {
             Se revisaron <b style="color:var(--text)">${data.found}</b> canales
             y todos ya estaban en tu lista.
           </div>
+          <div style="color:var(--ov1);margin-top:6px;font-size:12px">
+            Fuentes OK: <b style="color:var(--text)">${okSources}</b>
+          </div>
         </div>`;
     } else {
+      const okSources = Array.isArray(data.sources) ? data.sources.filter(s => s.ok).length : 0;
+      const badSources = Array.isArray(data.sources) ? data.sources.filter(s => !s.ok).length : 0;
       const rows = data.new.map(c => `
         <tr>
           <td style="padding:5px 10px;color:var(--mauve);font-size:12px">${escHtml(c.group)}</td>
@@ -2476,6 +2717,8 @@ async function syncWeb() {
           <span class="badge badge-total">${data.found} en web</span>
           <span class="badge badge-main">${data.added} NUEVOS</span>
           <span class="badge badge-disabled">${data.skipped} ya existian</span>
+          <span class="badge badge-backup">${okSources} fuentes OK</span>
+          ${badSources ? `<span class="badge badge-offline">${badSources} fuentes error</span>` : ''}
         </div>
         <div style="max-height:340px;overflow-y:auto;border:1px solid var(--s1);border-radius:8px">
           <table style="width:100%;border-collapse:collapse">
@@ -2514,6 +2757,16 @@ function closeSyncModal(e) {
   if (!e || e.target === document.getElementById('syncModal'))
     document.getElementById('syncModal').classList.remove('open');
 }
+
+// ── Re-render al rotar/redimensionar (móvil ↔ desktop) ───────────────────────
+let _lastMobile = isMobile();
+window.addEventListener('resize', () => {
+  const nowMobile = isMobile();
+  if (nowMobile !== _lastMobile) {
+    _lastMobile = nowMobile;
+    applyFilters();
+  }
+});
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 init();

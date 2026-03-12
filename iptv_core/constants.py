@@ -47,4 +47,28 @@ DEFAULT_CFG = {
     "auto_check_minutes": 2.0,
     "auto_check_batch_size": 8,
     "auto_check_timeout_sec": 4,
+    "sync_sources": [
+        {
+            "id": "new_era",
+            "name": "NEW ERA",
+            "enabled": True,
+            "parser": "new_era",
+            "url": (
+                "https://ipfs.io/ipns/"
+                "k2k4r8oqlcjxsritt5mczkcn4mmvcmymbqw7113fz2flkrerfwfps004/"
+                "?tab=canales"
+            ),
+            "timeout_sec": 60,
+            "priority": 10,
+        },
+        {
+            "id": "acestreamid",
+            "name": "AceStreamID",
+            "enabled": False,
+            "parser": "acestreamid",
+            "url": "https://acestreamid.com/",
+            "timeout_sec": 60,
+            "priority": 20,
+        }
+    ],
 }
