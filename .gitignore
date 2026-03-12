@@ -11,14 +11,10 @@ build/
 venv/
 env/
 
-# Temporales del proyecto
-_export_tmp.m3u
-_list_groups.py
-_test_json.txt
-
-# Datos sensibles / grandes
-channels.csv
-lista_iptv_clean.m3u
+# Runtime data — never commit these
+tmp/
+backups/
+health_cache.json
 
 # IDE
 .vscode/

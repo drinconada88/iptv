@@ -25,14 +25,50 @@ Gestor web de listas M3U con canales AceStream. Permite editar, filtrar, reorden
 
 ```text
 iptv/
-|- app.py                 # Backend Flask (API + parser + live.m3u)
-|- import_from_web.py     # Sync/scraping NEW ERA
+|- app.py                     # Factory Flask: crea app, registra blueprints, arranca
+|
+|- routes/                    # Capa HTTP — Flask Blueprints (solo request/response)
+|  |- channels_bp.py          # CRUD canales, save/export/load/sync, /live.m3u
+|  |- streaming_bp.py         # Proxy MPEG-TS, HLS, descarga .m3u por canal
+|  |- health_bp.py            # Estado de salud, ping, test manual
+|  |- config_bp.py            # Config get/set, estadísticas
+|  `- backups_bp.py           # Gestión de backups: listar, crear, restaurar, borrar
+|
+|- iptv_core/                 # Dominio y servicios (sin dependencia de Flask)
+|  |- constants.py            # Rutas, defaults, constantes
+|  |- state.py                # AppState singleton (canales + health en memoria)
+|  |- config_store.py         # I/O: config.json, health_cache.json
+|  |- m3u_codec.py            # Parser y escritor M3U (puras, sin estado)
+|  |- health_logic.py         # Funciones puras de salud (cfg, cooldowns, payload)
+|  |- health_service.py       # Orquestación: thread de auto-check, boot
+|  |- channel_service.py      # Negocio de canales: CRUD, save, sync web
+|  |- backup_service.py       # Versionado de lista_iptv.m3u (backup/restore/prune)
+|  `- acexy_client.py         # Cliente HTTP robusto para Acexy/AceStream
+|
+|- scripts/                   # Utilidades de línea de comandos (legacy, no usan Flask)
+|  |- editor.py               # Editor de canales con GUI Tkinter
+|  |- convert_to_csv.py       # Migración única M3U → CSV
+|  |- generate_m3u.py         # Generador M3U desde CSV
+|  `- _list_groups.py         # Imprime grupos del M3U por stdout
+|
+|- import_from_web.py         # Sync/scraping NEW ERA (usado por /api/sync)
 |- requirements.txt
-|- lista_iptv.m3u         # Fuente principal
-|- health_cache.json      # Estado de checks (online/offline) por peer
+|- lista_iptv.m3u             # ← ÚNICO fichero M3U. Todo lo demás se deriva de él.
+|
+|- backups/                   # Snapshots automáticos (generados en runtime, no en git)
+`- tmp/                       # Ficheros temporales de descarga (no en git)
 `- templates/
-   `- index.html          # UI SPA (HTML/CSS/JS)
+   `- index.html              # UI SPA (HTML/CSS/JS)
 ```
+
+### Ficheros M3U: una sola fuente de verdad
+
+| Fichero | Rol |
+|---|---|
+| `lista_iptv.m3u` | Única copia maestra. La app lee y escribe aquí. |
+| `backups/lista_iptv_YYYYMMDD_HHMMSS.m3u` | Snapshot automático creado antes de cada "Guardar". |
+| `tmp/_export_tmp.m3u` | Temporal de descarga. Se regenera en cada export. |
+| `/live.m3u` | Generado en memoria al vuelo. Nunca se escribe a disco. |
 
 ---
 
@@ -146,6 +182,10 @@ Si publicas el endpoint en internet, evita direcciones privadas (`192.168.x.x`) 
 | `POST` | `/api/config` | Guarda config |
 | `GET` | `/api/health` | Estado de salud de canales (cacheado) |
 | `GET` | `/live.m3u` | M3U dinamico compartible |
+| `GET` | `/api/backups` | Lista backups disponibles |
+| `POST` | `/api/backups` | Crea backup manual (body: `{"label": "..."}`) |
+| `POST` | `/api/backups/<file>/restore` | Restaura un backup (recarga canales en memoria) |
+| `DELETE` | `/api/backups/<file>` | Elimina un backup |
 
 ---
 

@@ -52,13 +52,27 @@ input, select, textarea { outline: none; font-family: inherit; font-size: 14px; 
   grid-column: 1 / -1;
   background: var(--mantle);
   border-bottom: 1px solid var(--s0);
-  display: flex; align-items: center; gap: 16px;
-  padding: 0 20px;
+  display: flex; align-items: center;
+  padding: 0; gap: 0;
+}
+/* Logo area = exactamente el ancho del sidebar, sin padding derecho
+   para que el .sep quede justo en x=230px, alineado con el borde del sidebar */
+.header-logo-area {
+  width: var(--sidebar);
+  flex-shrink: 0;
+  display: flex; align-items: center;
+  padding: 0 0 0 16px;
 }
 #header .logo { display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 700; color: var(--blue); letter-spacing: .5px; }
 #header .logo svg { width: 22px; height: 22px; }
-#header .sep { width: 1px; height: 26px; background: var(--s0); }
-#header .sep-health { width: 1px; height: 20px; background: var(--s1); margin: 0 2px 0 6px; }
+#header .sep { width: 1px; height: 26px; background: var(--s0); flex-shrink: 0; margin: 0 16px 0 0; }
+#header .sep-health { width: 1px; height: 20px; background: var(--s1); margin: 0 6px; flex-shrink: 0; }
+
+.header-badges {
+  flex: 1;
+  display: flex; align-items: center; justify-content: flex-start;
+  gap: 8px; flex-wrap: wrap;
+}
 
 .badge {
   display: inline-flex; align-items: center; gap: 5px;
@@ -74,7 +88,20 @@ input, select, textarea { outline: none; font-family: inherit; font-size: 14px; 
 .badge-offline  { background: rgba(243,139,168,.15); color: var(--red); }
 .badge-unknown  { background: rgba(108,112,134,.15); color: var(--sub1); }
 
-.header-actions { margin-left: auto; display: flex; gap: 8px; }
+/* Badges filtrables */
+.badge.filterable {
+  cursor: pointer;
+  transition: filter .13s, transform .13s, outline .13s;
+  user-select: none;
+}
+.badge.filterable:hover { filter: brightness(1.2); transform: scale(1.05); }
+.badge.filter-active {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+  filter: brightness(1.25);
+}
+
+.header-actions { display: flex; gap: 8px; flex-shrink: 0; padding-right: 14px; }
 .btn {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 6px 14px; border-radius: var(--radius);
@@ -166,6 +193,7 @@ tbody tr {
   border-bottom: 1px solid var(--s0);
   transition: background .1s;
   height: var(--row-h);
+  cursor: pointer;
 }
 tbody tr:hover { background: var(--s0); }
 tbody tr.disabled-row { opacity: .45; }
@@ -274,6 +302,29 @@ tbody tr:hover .row-actions { opacity: 1; }
 .modal-close:hover { background: var(--s1); color: var(--text); }
 .modal-body { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
 .modal-footer { padding: 14px 20px; border-top: 1px solid var(--s0); display: flex; justify-content: flex-end; gap: 8px; }
+
+/* Backups modal */
+.backup-list {
+  border: 1px solid var(--s1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.backup-list table { width: 100%; border-collapse: collapse; }
+.backup-list th, .backup-list td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--s0);
+  font-size: 12px;
+  text-align: left;
+}
+.backup-list th {
+  background: var(--crust);
+  color: var(--ov1);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+}
+.backup-list tr:last-child td { border-bottom: none; }
+.backup-meta-mono { font-family: 'Consolas', monospace; color: var(--sky); font-size: 11px; }
 
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .form-group { display: flex; flex-direction: column; gap: 5px; }
@@ -429,6 +480,55 @@ mark { background: rgba(249,226,175,.3); color: var(--yellow); border-radius: 2p
 .nas-input:focus { outline: none; color: var(--teal); }
 .nas-input::placeholder { color: var(--ov0); font-size: 11px; }
 
+/* ─── Health config widget ──────────────────────────────────────────────── */
+.health-widget {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--s0); border: 1px solid var(--s1);
+  border-radius: var(--radius); padding: 4px 10px;
+  transition: border-color .15s;
+}
+.health-widget:focus-within { border-color: var(--green); }
+.health-widget-label { font-size: 11px; color: var(--ov1); white-space: nowrap; }
+
+/* Toggle switch */
+.toggle-wrap { position: relative; display: inline-block; width: 32px; height: 17px; flex-shrink: 0; }
+.toggle-wrap input { opacity: 0; width: 0; height: 0; position: absolute; }
+.toggle-slider {
+  position: absolute; inset: 0; border-radius: 999px;
+  background: var(--s2); cursor: pointer; transition: background .2s;
+}
+.toggle-slider::before {
+  content: ''; position: absolute;
+  width: 11px; height: 11px; border-radius: 50%;
+  left: 3px; top: 3px;
+  background: var(--ov0); transition: transform .2s, background .2s;
+}
+.toggle-wrap input:checked + .toggle-slider { background: rgba(166,227,161,.4); }
+.toggle-wrap input:checked + .toggle-slider::before { transform: translateX(15px); background: var(--green); }
+
+.health-num-input {
+  background: transparent; border: none; color: var(--sky);
+  font-size: 12px; font-family: 'Consolas', monospace;
+  width: 28px; text-align: center; min-width: 0;
+}
+.health-num-input:focus { outline: none; }
+.health-num-input::-webkit-inner-spin-button,
+.health-num-input::-webkit-outer-spin-button { display: none; }
+.health-num-input[type=number] { -moz-appearance: textfield; }
+.health-sep { color: var(--s2); font-size: 12px; }
+
+/* Stepper buttons ±  */
+.num-stepper { display: inline-flex; align-items: center; gap: 1px; }
+.step-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; border-radius: 4px;
+  background: var(--s1); border: none; color: var(--sub0);
+  font-size: 13px; line-height: 1; cursor: pointer;
+  transition: background .12s, color .12s;
+  flex-shrink: 0; padding: 0;
+}
+.step-btn:hover { background: var(--s2); color: var(--text); }
+
 /* ─── Bulk select ────────────────────────────────────────────────────────── */
 tbody tr.selected-row { background: rgba(137,180,250,.07); }
 tbody tr.row-online  { box-shadow: inset 3px 0 0 var(--green); }
@@ -484,12 +584,13 @@ tbody tr.row-timeout { box-shadow: inset 3px 0 0 var(--peach); }
 
   #header {
     padding: 10px 12px;
-    gap: 10px;
     flex-wrap: wrap;
     align-items: center;
+    gap: 0;
   }
 
   #header .sep { display: none; }
+  .header-badges { gap: 6px; justify-content: flex-start; padding: 4px 0; width: 100%; }
 
   .badge {
     font-size: 11px;
@@ -534,7 +635,7 @@ tbody tr.row-timeout { box-shadow: inset 3px 0 0 var(--peach); }
   .search-wrap { flex: 1 1 100%; max-width: none; }
   #statusFilter { flex: 1 1 48%; min-width: 0; }
   .toolbar-sep { display: none; }
-  .proxy-widget, .nas-widget { display: none; }
+  .proxy-widget, .health-widget { display: none; }
   #rowCount { margin-left: auto; }
 
   #table-wrap { overflow: auto; }
@@ -640,26 +741,33 @@ tbody tr.row-timeout { box-shadow: inset 3px 0 0 var(--peach); }
 
   <!-- Header -->
   <header id="header">
-    <div class="logo">
-      <svg><use href="#i-tv"/></svg>
-      IPTV Manager
+    <div class="header-logo-area">
+      <div class="logo">
+        <svg><use href="#i-tv"/></svg>
+        IPTV Manager
+      </div>
     </div>
     <div class="sep"></div>
-    <span id="badge-total"  class="badge badge-total">— Total</span>
-    <span id="badge-main"   class="badge badge-main">— Main</span>
-    <span id="badge-backup" class="badge badge-backup">— Backup</span>
-    <span id="badge-test"   class="badge badge-test">— Test</span>
-    <span id="badge-disabled" class="badge badge-disabled">— Disabled</span>
-    <div class="sep-health"></div>
-    <span id="badge-online" class="badge badge-online">— Online</span>
-    <span id="badge-offline" class="badge badge-offline">— Offline</span>
-    <span id="badge-unknown" class="badge badge-unknown">— No probados</span>
+    <div class="header-badges">
+      <span id="badge-total"    class="badge badge-total    filterable" title="Mostrar todos"        onclick="setStatusFilter('')">— Total</span>
+      <span id="badge-main"     class="badge badge-main     filterable" title="Filtrar por MAIN"     onclick="setStatusFilter('MAIN')">— Main</span>
+      <span id="badge-backup"   class="badge badge-backup   filterable" title="Filtrar por BACKUP"   onclick="setStatusFilter('BACKUP')">— Backup</span>
+      <span id="badge-test"     class="badge badge-test     filterable" title="Filtrar por TEST"     onclick="setStatusFilter('TEST')">— Test</span>
+      <span id="badge-disabled" class="badge badge-disabled filterable" title="Filtrar por DISABLED" onclick="setStatusFilter('DISABLED')">— Disabled</span>
+      <div class="sep-health"></div>
+      <span id="badge-online"  class="badge badge-online  filterable" title="Filtrar canales online"     onclick="setHealthFilter('online')">— Online</span>
+      <span id="badge-offline" class="badge badge-offline filterable" title="Filtrar canales offline"    onclick="setHealthFilter('offline')">— Offline</span>
+      <span id="badge-unknown" class="badge badge-unknown filterable" title="Filtrar canales sin probar" onclick="setHealthFilter('unknown')">— No probados</span>
+    </div>
     <div class="header-actions">
       <button class="btn btn-secondary" onclick="exportM3u()">
         <svg><use href="#i-download"/></svg> Exportar
       </button>
       <button class="btn btn-secondary" id="syncBtn" onclick="syncWeb()">
         <svg><use href="#i-refresh"/></svg> Sync web
+      </button>
+      <button class="btn btn-secondary" onclick="openBackupsModal()">
+        <svg><use href="#i-folder"/></svg> Backups
       </button>
       <button class="btn btn-secondary" onclick="openCreate()">
         <svg><use href="#i-plus"/></svg> Nuevo canal
@@ -687,7 +795,7 @@ tbody tr.row-timeout { box-shadow: inset 3px 0 0 var(--peach); }
         <svg><use href="#i-search"/></svg>
         <input id="searchInput" type="text" placeholder="Buscar canal, fuente, peer…" oninput="applyFilters()">
       </div>
-      <select id="statusFilter" onchange="applyFilters()">
+      <select id="statusFilter" style="display:none">
         <option value="">Estados</option>
         <option value="MAIN">MAIN</option>
         <option value="BACKUP">BACKUP</option>
@@ -695,6 +803,7 @@ tbody tr.row-timeout { box-shadow: inset 3px 0 0 var(--peach); }
         <option value="DISABLED">DISABLED</option>
       </select>
       <div class="toolbar-sep"></div>
+      <span id="rowCount" style="font-size:12px;color:var(--ov1);white-space:nowrap"></span>
       <!-- Proxy AceStream config -->
       <div class="proxy-widget" title="Proxy AceStream — IP y puerto del servidor local">
         <svg style="width:13px;height:13px;color:var(--ov1);flex-shrink:0"><use href="#i-link"/></svg>
@@ -708,13 +817,24 @@ tbody tr.row-timeout { box-shadow: inset 3px 0 0 var(--peach); }
           <svg style="width:12px;height:12px"><use href="#i-check"/></svg>
         </button>
       </div>
-      <!-- NAS / Jellyfin config -->
-      <div class="nas-widget" title="Ruta SMB/NAS donde copiar el M3U al guardar (ej: Z:\m3u\lista_iptv.m3u)">
-        <svg style="width:13px;height:13px;color:var(--ov1);flex-shrink:0"><use href="#i-monitor"/></svg>
-        <span style="font-size:11px;color:var(--ov1);white-space:nowrap">NAS</span>
-        <input id="cfgNasPath" class="nas-input" type="text" placeholder="Z:\m3u\lista_iptv.m3u"
-               title="Ruta del fichero M3U en la NAS montada">
-        <button class="proxy-save-btn" id="nasSaveBtn" onclick="saveConfig()" title="Guardar ruta NAS">
+      <!-- NAS path: configured directly in config.json (nas_path key) -->
+      <!-- Health auto-check config -->
+      <div class="health-widget" title="Comprobación automática de salud de peers">
+        <svg style="width:13px;height:13px;color:var(--ov1);flex-shrink:0"><use href="#i-refresh"/></svg>
+        <span class="health-widget-label">Auto</span>
+        <label class="toggle-wrap" title="Activar/desactivar comprobación automática">
+          <input type="checkbox" id="cfgAutoEnabled" onchange="saveConfig()">
+          <span class="toggle-slider"></span>
+        </label>
+        <span class="health-sep">|</span>
+        <div class="num-stepper" title="Intervalo entre ciclos (minutos)">
+          <button class="step-btn" onclick="stepNum('cfgAutoMinutes',-0.5)">−</button>
+          <input id="cfgAutoMinutes" class="health-num-input" type="number"
+                 min="0.5" max="120" step="0.5" placeholder="2">
+          <button class="step-btn" onclick="stepNum('cfgAutoMinutes', 0.5)">+</button>
+        </div>
+        <span class="health-widget-label">min</span>
+        <button class="proxy-save-btn" id="healthSaveBtn" onclick="saveConfig()" title="Guardar configuración de health">
           <svg style="width:12px;height:12px"><use href="#i-check"/></svg>
         </button>
       </div>
@@ -793,8 +913,12 @@ tbody tr.row-timeout { box-shadow: inset 3px 0 0 var(--peach); }
       <div class="form-row">
         <div class="form-group">
           <label>Grupo</label>
-          <input class="form-input" id="editGroup" type="text" placeholder="DEPORTES"
-                 list="groupSuggestions" autocomplete="off">
+          <select class="form-input status-select" id="editGroup" onchange="_onGroupSelectChange()">
+          </select>
+          <input class="form-input" id="editGroupNew" type="text"
+                 placeholder="Nombre del nuevo grupo"
+                 style="display:none;margin-top:6px"
+                 oninput="this.value = this.value.toUpperCase()">
           <datalist id="groupSuggestions"></datalist>
         </div>
         <div class="form-group">
@@ -883,6 +1007,31 @@ tbody tr.row-timeout { box-shadow: inset 3px 0 0 var(--peach); }
   </div>
 </div>
 
+<!-- ─── Backups Modal ─────────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="backupsModal" onclick="closeBackupsModal(event)">
+  <div class="modal" style="width:820px">
+    <div class="modal-header">
+      <span class="modal-title">Backups de lista_iptv.m3u</span>
+      <button class="modal-close" onclick="closeBackupsModal()">
+        <svg style="width:16px;height:16px"><use href="#i-x"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" id="backupsBody">
+      <div style="display:flex;align-items:center;gap:12px;padding:14px 0">
+        <div class="spinner"></div>
+        <span style="color:var(--sub0)">Cargando backups…</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="loadBackups(true)">Actualizar</button>
+      <button class="btn btn-secondary" onclick="createManualBackup()">
+        <svg><use href="#i-save"/></svg> Crear backup manual
+      </button>
+      <button class="btn btn-ghost" onclick="closeBackupsModal()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ─── Player Modal ──────────────────────────────────────────────────────── -->
 <div class="modal-overlay" id="playerModal" onclick="closePlayerModal(event)">
   <div class="modal" style="width:780px;padding:0;overflow:hidden">
@@ -923,6 +1072,8 @@ tbody tr.row-timeout { box-shadow: inset 3px 0 0 var(--peach); }
 let allChannels   = [];
 let filteredRows  = [];
 let activeGroup   = '__ALL__';
+let activeStatusFilter = '';   // '' | 'MAIN' | 'BACKUP' | 'TEST' | 'DISABLED'
+let activeHealthFilter = '';   // '' | 'online' | 'offline' | 'unknown'
 let sortCol       = null;
 let sortDir       = 1;
 let m3uPath       = '';
@@ -930,6 +1081,8 @@ let _streamHealth = new Map();
 let _manualCheckRunning = false;
 let _autoCheckRunning = false;
 let _healthPollTimer = null;
+let _backupsCache = [];
+let _backupLabelFilter = '__ALL__';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 let _aceBase = 'http://192.168.1.169:8081/ace/getstream?id=';
@@ -937,37 +1090,66 @@ let _aceBase = 'http://192.168.1.169:8081/ace/getstream?id=';
 async function loadConfig() {
   const res = await fetch('/api/config');
   const cfg = await res.json();
-  document.getElementById('cfgHost').value = cfg.ace_host || '';
-  document.getElementById('cfgPort').value = cfg.ace_port || '';
-  document.getElementById('cfgNasPath').value = cfg.nas_path || '';
+  document.getElementById('cfgHost').value  = cfg.ace_host || '';
+  document.getElementById('cfgPort').value  = cfg.ace_port || '';
+  document.getElementById('cfgAutoEnabled').checked = !!cfg.auto_check_enabled;
+  document.getElementById('cfgAutoMinutes').value   = cfg.auto_check_minutes ?? 2;
   _aceBase = `http://${cfg.ace_host}:${cfg.ace_port}${cfg.ace_path}`;
+  _applyHealthWidgetStyle(!!cfg.auto_check_enabled);
 }
 
 async function saveConfig() {
-  const host    = document.getElementById('cfgHost').value.trim();
-  const port    = document.getElementById('cfgPort').value.trim();
-  const nasPath = document.getElementById('cfgNasPath').value.trim();
+  const host = document.getElementById('cfgHost').value.trim();
+  const port = document.getElementById('cfgPort').value.trim();
   if (!host || !port) { toast('Introduce IP y puerto', 'error'); return; }
+
+  const autoEnabled = document.getElementById('cfgAutoEnabled').checked;
+  const autoMinutes = parseFloat(document.getElementById('cfgAutoMinutes').value) || 2;
 
   const res = await fetch('/api/config', {
     method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ ace_host: host, ace_port: port, nas_path: nasPath })
+    body: JSON.stringify({
+      ace_host: host, ace_port: port,
+      auto_check_enabled: autoEnabled,
+      auto_check_minutes: autoMinutes,
+    })
   });
   const r = await res.json();
   if (r.ok) {
     _aceBase = r.ace_base;
-    [document.getElementById('proxySaveBtn'), document.getElementById('nasSaveBtn')]
-      .forEach(btn => { btn.classList.add('saved'); setTimeout(() => btn.classList.remove('saved'), 2000); });
-    const nasTxt = nasPath ? ` · NAS: ${nasPath}` : '';
-    toast(`Config guardada${nasTxt}`, 'success');
+    ['proxySaveBtn', 'healthSaveBtn'].forEach(id => {
+      const btn = document.getElementById(id);
+      if (btn) { btn.classList.add('saved'); setTimeout(() => btn.classList.remove('saved'), 2000); }
+    });
+    _applyHealthWidgetStyle(autoEnabled);
+    const healthTxt = autoEnabled ? ` · Auto ${autoMinutes}min` : ' · Auto OFF';
+    toast(`Config guardada${healthTxt}`, 'success');
   } else {
     toast('Error guardando configuración', 'error');
   }
 }
 
+function stepNum(id, delta) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const min  = parseFloat(el.min)  || 0;
+  const max  = parseFloat(el.max)  || 9999;
+  const cur  = parseFloat(el.value) || parseFloat(el.placeholder) || 0;
+  el.value = Math.min(max, Math.max(min, +(cur + delta).toFixed(2)));
+}
+
+function _applyHealthWidgetStyle(enabled) {
+  const widget = document.querySelector('.health-widget');
+  if (!widget) return;
+  widget.style.borderColor = enabled ? 'rgba(166,227,161,.4)' : '';
+  widget.querySelectorAll('.health-num-input, .health-widget-label').forEach(el => {
+    el.style.opacity = enabled ? '1' : '0.45';
+  });
+}
+
 // Guardar al pulsar Enter en los campos
 document.addEventListener('DOMContentLoaded', () => {
-  ['cfgHost','cfgPort','cfgNasPath'].forEach(id => {
+  ['cfgHost','cfgPort','cfgAutoMinutes'].forEach(id => {
     document.getElementById(id)?.addEventListener('keydown', e => {
       if (e.key === 'Enter') saveConfig();
     });
@@ -980,6 +1162,8 @@ async function init() {
   await loadConfig();
   await loadChannels();
   await loadStats();
+  _updateStatusBadgeHighlight();   // Total active by default
+  _updateHealthBadgeHighlight();
   await loadHealthStatus();
   if (_healthPollTimer) clearInterval(_healthPollTimer);
   _healthPollTimer = setInterval(loadHealthStatus, 15000);
@@ -1046,14 +1230,56 @@ function setGroup(group) {
   });
 }
 
+// ── Badge filters ─────────────────────────────────────────────────────────────
+function setStatusFilter(status) {
+  // Clicking the same badge again clears the filter
+  activeStatusFilter = (activeStatusFilter === status && status !== '') ? '' : status;
+  _updateStatusBadgeHighlight();
+  applyFilters();
+}
+
+function setHealthFilter(health) {
+  activeHealthFilter = (activeHealthFilter === health) ? '' : health;
+  _updateHealthBadgeHighlight();
+  applyFilters();
+}
+
+function _updateStatusBadgeHighlight() {
+  const map = { '': 'total', 'MAIN': 'main', 'BACKUP': 'backup', 'TEST': 'test', 'DISABLED': 'disabled' };
+  Object.entries(map).forEach(([val, key]) => {
+    const el = document.getElementById('badge-' + key);
+    if (el) el.classList.toggle('filter-active', activeStatusFilter === val && val !== '');
+  });
+  // Total badge is active only when no other status filter is set
+  const totalEl = document.getElementById('badge-total');
+  if (totalEl) totalEl.classList.toggle('filter-active', activeStatusFilter === '');
+}
+
+function _updateHealthBadgeHighlight() {
+  ['online', 'offline', 'unknown'].forEach(k => {
+    const el = document.getElementById('badge-' + k);
+    if (el) el.classList.toggle('filter-active', activeHealthFilter === k);
+  });
+}
+
 // ── Filters ──────────────────────────────────────────────────────────────────
 function applyFilters() {
-  const q      = document.getElementById('searchInput').value.trim().toLowerCase();
-  const status = document.getElementById('statusFilter').value;
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
 
   filteredRows = allChannels.filter(ch => {
     if (activeGroup !== '__ALL__' && ch.group !== activeGroup) return false;
-    if (status && ch.status !== status) return false;
+    if (activeStatusFilter && ch.status !== activeStatusFilter) return false;
+
+    if (activeHealthFilter) {
+      const hs = String(_streamHealth.get(ch.id)?.status || 'unknown').toLowerCase();
+      const isOnline  = hs === 'online';
+      const isOffline = hs === 'offline' || hs === 'timeout' || hs === 'error';
+      const isUnknown = !isOnline && !isOffline;
+      if (activeHealthFilter === 'online'  && !isOnline)  return false;
+      if (activeHealthFilter === 'offline' && !isOffline) return false;
+      if (activeHealthFilter === 'unknown' && !isUnknown) return false;
+    }
+
     if (q) {
       const hay = `${ch.channel} ${ch.group} ${ch.source} ${ch.quality} ${ch.peer_full}`.toLowerCase();
       if (!hay.includes(q)) return false;
@@ -1070,6 +1296,7 @@ function applyFilters() {
   }
 
   renderTable(filteredRows, q);
+  document.getElementById('rowCount').textContent = `${filteredRows.length} / ${allChannels.length}`;
 }
 
 // ── Sort ─────────────────────────────────────────────────────────────────────
@@ -1160,8 +1387,8 @@ function openCreate() {
   _createMode = true;
   document.getElementById('editId').value       = '';
   document.getElementById('editChannel').value  = '';
-  document.getElementById('editGroup').value    = activeGroup !== '__ALL__' ? activeGroup : '';
   document.getElementById('editStatus').value   = 'MAIN';
+  _setGroupValue(activeGroup !== '__ALL__' ? activeGroup : '');
   document.getElementById('editQuality').value  = '';
   document.getElementById('editSource').value   = '';
   document.getElementById('editPeer').value     = '';
@@ -1173,15 +1400,59 @@ function openCreate() {
   document.getElementById('saveBtn').innerHTML =
     '<svg><use href="#i-plus"/></svg> Crear canal';
   updatePeerMeta();
-  _refreshGroupSuggestions();
   document.getElementById('editModal').classList.add('open');
   document.getElementById('editChannel').focus();
 }
 
 function _refreshGroupSuggestions() {
   const groups = [...new Set(allChannels.map(c => c.group))].sort();
+
+  // datalist para bulkGroupInput
   const dl = document.getElementById('groupSuggestions');
   dl.innerHTML = groups.map(g => `<option value="${escHtml(g)}">`).join('');
+
+  // select del modal — conserva la selección actual si sigue siendo válida
+  const sel = document.getElementById('editGroup');
+  const prev = sel.value;
+  sel.innerHTML =
+    groups.map(g => `<option value="${escHtml(g)}">${escHtml(g)}</option>`).join('') +
+    `<option value="__NEW__" style="color:var(--mauve)">✏ Nuevo grupo…</option>`;
+  if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
+}
+
+function _onGroupSelectChange() {
+  const sel      = document.getElementById('editGroup');
+  const newInput = document.getElementById('editGroupNew');
+  const isNew    = sel.value === '__NEW__';
+  newInput.style.display = isNew ? 'block' : 'none';
+  if (isNew) { newInput.value = ''; newInput.focus(); }
+}
+
+function _setGroupValue(group) {
+  _refreshGroupSuggestions();
+  const sel      = document.getElementById('editGroup');
+  const newInput = document.getElementById('editGroupNew');
+  if (!group || group === '__ALL__') {
+    sel.value = sel.options[0]?.value || '__NEW__';
+    newInput.style.display = 'none';
+    return;
+  }
+  if ([...sel.options].some(o => o.value === group)) {
+    sel.value = group;
+    newInput.style.display = 'none';
+  } else {
+    sel.value = '__NEW__';
+    newInput.value = group;
+    newInput.style.display = 'block';
+  }
+}
+
+function _getGroupValue() {
+  const sel = document.getElementById('editGroup');
+  if (sel.value === '__NEW__') {
+    return document.getElementById('editGroupNew').value.trim().toUpperCase();
+  }
+  return sel.value.trim().toUpperCase();
 }
 
 // ── Edit modal ────────────────────────────────────────────────────────────────
@@ -1190,8 +1461,8 @@ function openEdit(id) {
   if (!ch) return;
   document.getElementById('editId').value       = ch.id;
   document.getElementById('editChannel').value  = ch.channel   || '';
-  document.getElementById('editGroup').value    = ch.group     || '';
   document.getElementById('editStatus').value   = ch.status    || 'MAIN';
+  _setGroupValue(ch.group || '');
   document.getElementById('editQuality').value  = ch.quality   || '';
   document.getElementById('editSource').value   = ch.source    || '';
   document.getElementById('editPeer').value     = ch.peer_full || '';
@@ -1204,7 +1475,6 @@ function openEdit(id) {
     '<svg><use href="#i-save"/></svg> Guardar';
   _createMode = false;
   updatePeerMeta();
-  _refreshGroupSuggestions();
   document.getElementById('editModal').classList.add('open');
   document.getElementById('editChannel').focus();
 }
@@ -1228,7 +1498,7 @@ function closeModal(e) {
 async function saveEdit() {
   const data = {
     channel:  document.getElementById('editChannel').value.trim(),
-    group:    document.getElementById('editGroup').value.trim().toUpperCase(),
+    group:    _getGroupValue(),
     status:   document.getElementById('editStatus').value,
     quality:  document.getElementById('editQuality').value,
     source:   document.getElementById('editSource').value.trim(),
@@ -1239,7 +1509,7 @@ async function saveEdit() {
   };
 
   if (!data.channel) { toast('El nombre del canal es obligatorio', 'error'); return; }
-  if (!data.group)   { toast('El grupo es obligatorio', 'error'); return; }
+  if (!data.group)   { toast('El grupo es obligatorio', 'error'); document.getElementById('editGroupNew').focus(); return; }
 
   if (_createMode) {
     const res = await fetch('/api/channel/new', {
@@ -1367,6 +1637,173 @@ async function saveM3u() {
 function exportM3u() {
   window.location.href = '/api/export';
   toast('Descargando lista M3U…', 'info');
+}
+
+// ── Backups ───────────────────────────────────────────────────────────────────
+function openBackupsModal() {
+  document.getElementById('backupsModal').classList.add('open');
+  loadBackups(false);
+}
+
+function closeBackupsModal(e) {
+  if (!e || e.target === document.getElementById('backupsModal')) {
+    document.getElementById('backupsModal').classList.remove('open');
+  }
+}
+
+function _fmtBackupDate(ts) {
+  if (!ts) return '—';
+  const d = new Date(Number(ts) * 1000);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString();
+}
+
+function _fmtBytes(n) {
+  const v = Number(n || 0);
+  if (v < 1024) return `${v} B`;
+  if (v < 1024 * 1024) return `${(v / 1024).toFixed(1)} KB`;
+  return `${(v / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function renderBackups() {
+  const el = document.getElementById('backupsBody');
+  if (!_backupsCache.length) {
+    el.innerHTML = `
+      <div style="padding:10px 0;color:var(--ov1)">
+        No hay backups disponibles todavía.<br>
+        Guarda el M3U o crea uno manual para empezar.
+      </div>`;
+    return;
+  }
+
+  const labels = [...new Set(_backupsCache.map(b => (b.label || '').trim()))]
+    .sort((a, b) => a.localeCompare(b));
+  const allowedFilters = new Set(['__ALL__', ...labels.map(l => l || '__EMPTY__')]);
+  if (!allowedFilters.has(_backupLabelFilter)) _backupLabelFilter = '__ALL__';
+
+  const visibleBackups = _backupsCache.filter(b => {
+    if (_backupLabelFilter === '__ALL__') return true;
+    const label = (b.label || '').trim();
+    if (_backupLabelFilter === '__EMPTY__') return !label;
+    return label === _backupLabelFilter;
+  });
+
+  const rows = visibleBackups.map(b => `
+    <tr>
+      <td><span class="backup-meta-mono">${escHtml(b.filename || '')}</span></td>
+      <td>${escHtml(b.label || '—')}</td>
+      <td>${_fmtBackupDate(b.created_at)}</td>
+      <td>${_fmtBytes(b.size_bytes)}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-ghost btn-sm" onclick="restoreBackupFile('${escHtml(b.filename || '')}')">Restaurar</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteBackupFile('${escHtml(b.filename || '')}')">Borrar</button>
+      </td>
+    </tr>
+  `).join('');
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:12px;color:var(--ov1)">
+          ${visibleBackups.length} de ${_backupsCache.length} backup${_backupsCache.length !== 1 ? 's' : ''}
+        </span>
+        <select class="form-input" id="backupLabelFilter" style="max-width:220px;padding:5px 8px;font-size:12px" onchange="setBackupLabelFilter(this.value)">
+          <option value="__ALL__" ${_backupLabelFilter === '__ALL__' ? 'selected' : ''}>Todas las etiquetas</option>
+          ${labels.some(l => !l) ? `<option value="__EMPTY__" ${_backupLabelFilter === '__EMPTY__' ? 'selected' : ''}>(sin etiqueta)</option>` : ''}
+          ${labels.filter(Boolean).map(l => `<option value="${escHtml(l)}" ${_backupLabelFilter === l ? 'selected' : ''}>${escHtml(l)}</option>`).join('')}
+        </select>
+      </div>
+      <span style="font-size:11px;color:var(--ov0)">Los más nuevos aparecen arriba</span>
+    </div>
+    <div class="backup-list">
+      <table>
+        <thead>
+          <tr>
+            <th>Fichero</th>
+            <th>Etiqueta</th>
+            <th>Fecha</th>
+            <th>Tamaño</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>${rows || `<tr><td colspan="5" style="color:var(--ov1)">No hay backups para ese filtro.</td></tr>`}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function setBackupLabelFilter(filter) {
+  _backupLabelFilter = filter || '__ALL__';
+  renderBackups();
+}
+
+async function loadBackups(showToast = false) {
+  const el = document.getElementById('backupsBody');
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 0">
+      <div class="spinner"></div>
+      <span style="color:var(--sub0)">Cargando backups…</span>
+    </div>`;
+  try {
+    const res = await fetch('/api/backups');
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'No se pudo cargar');
+    _backupsCache = Array.isArray(data.backups) ? data.backups : [];
+    renderBackups();
+    if (showToast) toast('Lista de backups actualizada', 'success');
+  } catch (e) {
+    el.innerHTML = `<div style="color:var(--red);padding:8px 0">Error cargando backups: ${escHtml(e.message || 'desconocido')}</div>`;
+    if (showToast) toast('Error cargando backups', 'error');
+  }
+}
+
+async function createManualBackup() {
+  const label = (prompt('Etiqueta opcional para el backup manual:', 'manual') || '').trim();
+  try {
+    const res = await fetch('/api/backups', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ label: label || 'manual' }),
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'No se pudo crear backup');
+    toast(`Backup creado: ${data.backup?.filename || 'ok'}`, 'success');
+    await loadBackups(false);
+  } catch (e) {
+    toast(`Error creando backup: ${e.message || 'desconocido'}`, 'error');
+  }
+}
+
+async function restoreBackupFile(filename) {
+  if (!filename) return;
+  const ok = confirm(`¿Restaurar backup?\n\n${filename}\n\nSe reemplazará la lista actual.`);
+  if (!ok) return;
+  try {
+    const res = await fetch(`/api/backups/${encodeURIComponent(filename)}/restore`, { method: 'POST' });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'No se pudo restaurar');
+    toast(`Backup restaurado (${data.channels_loaded || 0} canales)`, 'success');
+    await loadChannels();
+    await loadStats();
+    await loadHealthStatus();
+    await loadBackups(false);
+  } catch (e) {
+    toast(`Error restaurando backup: ${e.message || 'desconocido'}`, 'error');
+  }
+}
+
+async function deleteBackupFile(filename) {
+  if (!filename) return;
+  if (!confirm(`¿Eliminar backup?\n\n${filename}`)) return;
+  try {
+    const res = await fetch(`/api/backups/${encodeURIComponent(filename)}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'No se pudo eliminar');
+    toast('Backup eliminado', 'success');
+    await loadBackups(false);
+  } catch (e) {
+    toast(`Error eliminando backup: ${e.message || 'desconocido'}`, 'error');
+  }
 }
 
 // ── Multi-select & bulk actions ───────────────────────────────────────────────
