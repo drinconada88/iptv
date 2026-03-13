@@ -12,14 +12,14 @@ def health_cfg(cfg: dict) -> dict:
     except Exception:
         batch = 8
     try:
-        timeout = int(cfg.get("auto_check_timeout_sec", 4) or 4)
+        timeout = int(cfg.get("auto_check_timeout_sec", 20) or 20)
     except Exception:
-        timeout = 4
+        timeout = 20
     return {
         "enabled": enabled,
         "minutes": max(0.5, minutes),
         "batch_size": max(1, min(25, batch)),
-        "timeout_sec": max(2, min(10, timeout)),
+        "timeout_sec": max(5, min(60, timeout)),
     }
 
 
@@ -37,10 +37,24 @@ def channel_base_cooldown(status: str) -> int:
 def health_update_for_peer(cache: dict, peer: str, result: dict, now_ts: int):
     prev = cache.get(peer, {})
     prev_fail = int(prev.get("fail_count") or 0)
+    prev_status = str(prev.get("status") or "unknown").lower()
     status = (result.get("status") or "error").lower()
-    fail_count = 0 if status == "online" else min(10, prev_fail + 1)
+
+    if status == "online":
+        fail_count = 0
+        final_status = "online"
+    else:
+        fail_count = min(10, prev_fail + 1)
+        # Require 2 consecutive failures before changing a previously-good
+        # status.  A single transient error (network hiccup, AceStream startup)
+        # should not flip the channel to offline.
+        if fail_count < 2 and prev_status in ("online", "unknown"):
+            final_status = prev_status
+        else:
+            final_status = status
+
     cache[peer] = {
-        "status": status,
+        "status": final_status,
         "latency_ms": int(result.get("latency_ms") or 0),
         "detail": str(result.get("detail") or "")[:120],
         "checked_at": now_ts,

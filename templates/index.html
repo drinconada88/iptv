@@ -1760,6 +1760,46 @@ async function deleteChannel(id) {
   }
 }
 
+function _startAutoEnableCheck(ids = []) {
+  if (_manualCheckRunning || _autoCheckRunning) return false;
+  _manualCheckRunning = true;
+  _setChecksDisabled();
+  ids.forEach(id => {
+    _streamHealth.set(id, { status: 'testing', latency_ms: 0, detail: '' });
+    _paintPill(id);
+  });
+  return true;
+}
+
+function _finishAutoEnableCheck(wasStarted) {
+  if (!wasStarted) return;
+  _manualCheckRunning = false;
+  _setChecksDisabled();
+}
+
+function _applyAutoHealthCheckFromResponse(autoCheck, fallbackIds = []) {
+  const results = autoCheck?.results || {};
+  const applied = new Set();
+  Object.entries(results).forEach(([id, info]) => {
+    const n = Number(id);
+    applied.add(n);
+    _streamHealth.set(n, {
+      status: info.status || 'unknown',
+      latency_ms: Number(info.latency_ms || 0),
+      detail: info.detail || '',
+    });
+    _paintPill(n);
+  });
+
+  // Si no llega resultado de algún canal habilitado (p.ej. lock ocupado),
+  // evitamos dejarlo en TEST permanente.
+  fallbackIds.forEach(id => {
+    if (applied.has(id)) return;
+    _streamHealth.set(id, { status: 'unknown', latency_ms: 0, detail: '' });
+    _paintPill(id);
+  });
+}
+
 async function toggleChannelEnabled(id, enable) {
   const ch = allChannels.find(c => c.id === id);
   if (!ch) return;
@@ -1770,32 +1810,38 @@ async function toggleChannelEnabled(id, enable) {
     if (!ok) return;
   }
 
-  const res = await fetch(`/api/channel/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ enabled: Boolean(enable) })
-  });
-  const r = await res.json();
-  if (!r.ok) {
-    toast('No se pudo actualizar el estado del canal', 'error');
-    return;
-  }
+  const startedAutoCheck = enable ? _startAutoEnableCheck([id]) : false;
+  try {
+    const res = await fetch(`/api/channel/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: Boolean(enable) })
+    });
+    const r = await res.json();
+    if (!r.ok) {
+      toast('No se pudo actualizar el estado del canal', 'error');
+      return;
+    }
 
-  const idx = allChannels.findIndex(c => c.id === id);
-  if (idx !== -1) allChannels[idx] = r.channel;
-  if (enable) {
-    _streamHealth.set(id, { status: 'unknown', latency_ms: 0, detail: '' });
-  } else {
-    _streamHealth.set(id, { status: 'disabled', latency_ms: 0, detail: '' });
-  }
-  applyFilters();
-  loadStats();
-  _refreshHealthHeaderBadges();
-
-  if (enable) {
-    toast('Canal habilitado.', 'success');
-  } else {
-    toast('Canal deshabilitado. Se reflejará en el M3U al guardar.', 'info');
+    const idx = allChannels.findIndex(c => c.id === id);
+    if (idx !== -1) allChannels[idx] = r.channel;
+    if (enable) {
+      _applyAutoHealthCheckFromResponse(r.auto_health_check, [id]);
+      if (r.auto_health_check?.busy) {
+        toast('Canal habilitado, pero hay otra comprobación en curso', 'info');
+      } else {
+        toast('Canal habilitado y comprobado.', 'success');
+      }
+    } else {
+      _streamHealth.set(id, { status: 'disabled', latency_ms: 0, detail: '' });
+      _paintPill(id);
+      toast('Canal deshabilitado. Se reflejará en el M3U al guardar.', 'info');
+    }
+    applyFilters();
+    loadStats();
+    _refreshHealthHeaderBadges();
+  } finally {
+    _finishAutoEnableCheck(startedAutoCheck);
   }
 }
 
@@ -2074,22 +2120,52 @@ async function bulkSetStatus(status) {
 async function bulkSetEnabled(enabled) {
   if (!_selectedIds.size) return;
   const ids = [..._selectedIds];
-  const res = await fetch('/api/channels/batch', {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ids, patch: { enabled: Boolean(enabled) } })
-  });
-  const r = await res.json();
-  if (!r.ok) {
-    toast(r.error || 'No se pudo actualizar en lote', 'error');
-    return;
+  const idsToEnableNow = enabled
+    ? ids.filter(id => {
+      const ch = allChannels.find(c => c.id === id);
+      return ch && !isChannelEnabled(ch);
+    })
+    : [];
+  const startedAutoCheck = idsToEnableNow.length ? _startAutoEnableCheck(idsToEnableNow) : false;
+
+  try {
+    const res = await fetch('/api/channels/batch', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids, patch: { enabled: Boolean(enabled) } })
+    });
+    const r = await res.json();
+    if (!r.ok) {
+      toast(r.error || 'No se pudo actualizar en lote', 'error');
+      return;
+    }
+    await loadChannels();
+    ids.forEach(id => _selectedIds.add(id));
+    _updateBulkBar();
+    loadStats();
+
+    if (enabled) {
+      _applyAutoHealthCheckFromResponse(r.auto_health_check, idsToEnableNow);
+      if (r.auto_health_check?.busy) {
+        toast(
+          `${ids.length} canales habilitados, pero hay otra comprobación en curso`,
+          'info'
+        );
+      } else {
+        const checked = Number(r.auto_health_check?.checked || 0);
+        toast(`${ids.length} canales habilitados · comprobados ${checked}`, 'success');
+      }
+    } else {
+      ids.forEach(id => {
+        _streamHealth.set(id, { status: 'disabled', latency_ms: 0, detail: '' });
+        _paintPill(id);
+      });
+      toast(`${ids.length} canales deshabilitados`, 'success');
+    }
+    _refreshHealthHeaderBadges();
+  } finally {
+    _finishAutoEnableCheck(startedAutoCheck);
   }
-  await loadChannels();
-  ids.forEach(id => _selectedIds.add(id));
-  _updateBulkBar();
-  loadStats();
-  _refreshHealthHeaderBadges();
-  toast(`${ids.length} canales ${enabled ? 'habilitados' : 'deshabilitados'}`, 'success');
 }
 
 async function bulkSetGroup() {

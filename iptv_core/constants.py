@@ -46,7 +46,7 @@ DEFAULT_CFG = {
     "auto_check_enabled": True,
     "auto_check_minutes": 2.0,
     "auto_check_batch_size": 8,
-    "auto_check_timeout_sec": 4,
+    "auto_check_timeout_sec": 20,
     "sync_sources": [
         {
             "id": "new_era",

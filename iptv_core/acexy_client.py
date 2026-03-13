@@ -17,29 +17,57 @@ logger = logging.getLogger(__name__)
 
 # ── Health check ──────────────────────────────────────────────────────────────
 
-def test_url(url: str, timeout: int = 5) -> dict:
-    """Quick connectivity check. Returns {status, latency_ms, detail}."""
-    t0 = time.time()
-    try:
-        req = urllib.request.Request(url, method="GET")
-        req.add_header("User-Agent", "VLC/3.0")
-        with urllib.request.urlopen(req, timeout=timeout) as r:
+# Errors that are definitively fatal — no point retrying.
+_HARD_NETWORK_ERRORS = ("connection refused", "no route to host", "name or service not known", "nodename nor servname")
+_HARD_HTTP_ERRORS = frozenset(range(400, 500)) - {429}  # 4xx except rate-limit
+
+
+def test_url(url: str, timeout: int = 5, retries: int = 3, retry_delay: float = 3.0) -> dict:
+    """Connectivity check with retries for transient failures.
+
+    AceStream initialises P2P on demand: the first request often hits while the
+    engine is still starting and returns a timeout or 5xx.  Retrying after a
+    short pause catches those false negatives.
+
+    Soft errors (timeout, 5xx, generic URLError) are retried up to `retries`
+    times.  Hard errors (connection refused, DNS failure, 4xx) return immediately.
+
+    Returns {status, latency_ms, detail}.
+    """
+    last_result: dict = {"status": "offline", "latency_ms": 0, "detail": "no attempt"}
+
+    for attempt in range(max(1, retries)):
+        if attempt > 0:
+            time.sleep(retry_delay)
+
+        t0 = time.time()
+        try:
+            req = urllib.request.Request(url, method="GET")
+            req.add_header("User-Agent", "VLC/3.0")
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                ms = int((time.time() - t0) * 1000)
+                return {"status": "online", "latency_ms": ms, "detail": str(r.status)}
+        except urllib.error.HTTPError as e:
             ms = int((time.time() - t0) * 1000)
-            return {"status": "online", "latency_ms": ms, "detail": str(r.status)}
-    except urllib.error.HTTPError as e:
-        ms = int((time.time() - t0) * 1000)
-        if e.code in (301, 302, 206):
-            return {"status": "online", "latency_ms": ms, "detail": f"HTTP {e.code}"}
-        return {"status": "error", "latency_ms": ms, "detail": f"HTTP {e.code}"}
-    except urllib.error.URLError as e:
-        ms = int((time.time() - t0) * 1000)
-        reason = str(e.reason)
-        if "timed out" in reason.lower():
-            return {"status": "timeout", "latency_ms": ms, "detail": "timeout"}
-        return {"status": "offline", "latency_ms": ms, "detail": reason[:80]}
-    except Exception as e:
-        ms = int((time.time() - t0) * 1000)
-        return {"status": "offline", "latency_ms": ms, "detail": str(e)[:80]}
+            if e.code in (301, 302, 206):
+                return {"status": "online", "latency_ms": ms, "detail": f"HTTP {e.code}"}
+            last_result = {"status": "error", "latency_ms": ms, "detail": f"HTTP {e.code}"}
+            if e.code in _HARD_HTTP_ERRORS:
+                break  # definitive, no retry
+        except urllib.error.URLError as e:
+            ms = int((time.time() - t0) * 1000)
+            reason = str(e.reason)
+            if "timed out" in reason.lower():
+                last_result = {"status": "timeout", "latency_ms": ms, "detail": "timeout"}
+            else:
+                last_result = {"status": "offline", "latency_ms": ms, "detail": reason[:80]}
+                if any(x in reason.lower() for x in _HARD_NETWORK_ERRORS):
+                    break  # server unreachable, no retry
+        except Exception as e:
+            ms = int((time.time() - t0) * 1000)
+            last_result = {"status": "offline", "latency_ms": ms, "detail": str(e)[:80]}
+
+    return last_result
 
 
 # ── Streaming ─────────────────────────────────────────────────────────────────
