@@ -1,6 +1,6 @@
 """Health-check orchestration: background thread and manual test helpers.
 
-Runs a daily full scan at 05:00 and supports manual per-channel or batch checks.
+Supports manual per-channel or batch checks.
 Reads/writes state.health_cache and state.health_meta under state.health_lock.
 """
 import logging
@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 DAILY_CHECK_HOUR = 5
 DAILY_CHECK_MINUTE = 0
+DAILY_CHECK_ENABLED = False  # Temporarily disabled by request.
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -38,7 +39,7 @@ def get_health_payload() -> dict:
         meta = dict(state.health_meta)
         cache = dict(state.health_cache)
     cfg = health_cfg(load_config())
-    meta["next_run_in_sec"] = _seconds_until_next_daily()
+    meta["next_run_in_sec"] = _seconds_until_next_daily() if DAILY_CHECK_ENABLED else 0
     return health_payload(state.channels, cache, meta, cfg)
 
 
@@ -53,8 +54,10 @@ def test_channel(idx: int) -> dict | None:
     if not peer:
         return {"ok": False, "status": "no_peer", "latency_ms": 0}
 
+    cfg = health_cfg(load_config())
+    timeout = cfg["timeout_sec"]
     url = f"{ace_base()}{peer}"
-    result = test_url(url, timeout=7)
+    result = test_url(url, timeout=timeout)
     now = int(time.time())
     with state.health_lock:
         health_update_for_peer(state.health_cache, peer, result, now)
@@ -67,7 +70,7 @@ def test_channel(idx: int) -> dict | None:
 def test_batch(group: str | None = None, ids: list[int] | None = None) -> dict:
     """Manual batch check over all channels, a group, or selected ids."""
     cfg = health_cfg(load_config())
-    timeout = max(7, int(cfg.get("timeout_sec", 7)))
+    timeout = cfg["timeout_sec"]
 
     selected_ids = set()
     if ids:
@@ -181,7 +184,7 @@ def _run_auto_health_cycle():
 def _auto_health_loop():
     while True:
         try:
-            if _is_daily_run_due():
+            if DAILY_CHECK_ENABLED and _is_daily_run_due():
                 _run_daily_health_cycle()
             time.sleep(20)
         except Exception as e:

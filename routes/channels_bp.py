@@ -20,11 +20,45 @@ from iptv_core.channel_service import (
 )
 from iptv_core.config_store import load_config
 from iptv_core.constants import EPG_URL, M3U_FILE
-from iptv_core.health_service import ensure_runtime_background
+from iptv_core.health_service import ensure_runtime_background, test_channel
 from iptv_core.m3u_codec import peer_short
 from iptv_core.state import state
 
 channels_bp = Blueprint("channels", __name__)
+
+
+def _auto_check_enabled_channels(ids: list[int]) -> dict:
+    """Run health checks for channels just enabled, without blocking if busy."""
+    unique_ids = list(dict.fromkeys(int(i) for i in ids))
+    if not unique_ids:
+        return {"attempted": 0, "checked": 0, "busy": False, "results": {}}
+
+    if not state.manual_test_lock.acquire(blocking=False):
+        return {
+            "attempted": len(unique_ids),
+            "checked": 0,
+            "busy": True,
+            "detail": "another_check_running",
+            "results": {},
+        }
+
+    checked = 0
+    results: dict[int, dict] = {}
+    try:
+        for idx in unique_ids:
+            res = test_channel(idx)
+            if res is None:
+                continue
+            checked += 1
+            results[idx] = {
+                "status": str(res.get("status") or "unknown"),
+                "latency_ms": int(res.get("latency_ms") or 0),
+                "detail": str(res.get("detail") or "")[:120],
+            }
+    finally:
+        state.manual_test_lock.release()
+
+    return {"attempted": len(unique_ids), "checked": checked, "busy": False, "results": results}
 
 
 @channels_bp.route("/")
@@ -41,10 +75,21 @@ def api_channels():
 
 @channels_bp.route("/api/channel/<int:idx>", methods=["PUT"])
 def api_update(idx: int):
+    prev = get_channel(idx)
+    prev_enabled = bool(prev.get("enabled", True)) if prev is not None else None
+
     ch = update_channel(idx, request.get_json(silent=True) or {})
     if ch is None:
         return jsonify({"ok": False, "error": "Not found"}), 404
-    return jsonify({"ok": True, "channel": ch})
+
+    auto_health = None
+    if prev_enabled is False and bool(ch.get("enabled", True)):
+        auto_health = _auto_check_enabled_channels([idx])
+
+    resp = {"ok": True, "channel": ch}
+    if auto_health is not None:
+        resp["auto_health_check"] = auto_health
+    return jsonify(resp)
 
 
 @channels_bp.route("/api/channels/batch", methods=["PUT"])
@@ -65,13 +110,28 @@ def api_batch_update():
         except (TypeError, ValueError):
             return jsonify({"ok": False, "error": f"id invalido: {raw_id}"}), 400
 
+    prev_enabled_map = {}
+    for ch_id in normalized_ids:
+        ch = get_channel(ch_id)
+        if ch is not None:
+            prev_enabled_map[ch_id] = bool(ch.get("enabled", True))
+
     updated, missing = batch_update_channels(normalized_ids, patch)
+
+    enabled_now_ids = []
+    for ch in updated:
+        ch_id = int(ch.get("id", -1))
+        if prev_enabled_map.get(ch_id, True) is False and bool(ch.get("enabled", True)):
+            enabled_now_ids.append(ch_id)
+    auto_health = _auto_check_enabled_channels(enabled_now_ids) if enabled_now_ids else None
+
     return jsonify(
         {
             "ok": True,
             "updated": updated,
             "updated_count": len(updated),
             "missing": missing,
+            **({"auto_health_check": auto_health} if auto_health is not None else {}),
         }
     )
 

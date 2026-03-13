@@ -33,7 +33,7 @@ def api_config_set():
 
     _clamp_float(cfg, data, "auto_check_minutes", lo=0.5)
     _clamp_int(cfg, data, "auto_check_batch_size", lo=1, hi=25)
-    _clamp_int(cfg, data, "auto_check_timeout_sec", lo=2, hi=10)
+    _clamp_int(cfg, data, "auto_check_timeout_sec", lo=2, hi=20)
 
     save_config(cfg)
     return jsonify({"ok": True, "config": cfg, "ace_base": ace_base(cfg)})

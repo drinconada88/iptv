@@ -8,31 +8,31 @@
   },
   "c1ee6e1e0ef5928d8261f855c417de21794f437d": {
     "status": "error",
-    "latency_ms": 1168,
+    "latency_ms": 1143,
     "detail": "HTTP 500",
-    "checked_at": 1773334414,
-    "fail_count": 5
+    "checked_at": 1773344873,
+    "fail_count": 6
   },
   "8677d339ecddd75165c0015025f598b6215974cf": {
     "status": "error",
-    "latency_ms": 1121,
+    "latency_ms": 1097,
     "detail": "HTTP 500",
-    "checked_at": 1773334414,
-    "fail_count": 5
+    "checked_at": 1773344886,
+    "fail_count": 7
   },
   "599a2fda91aa55703e2c5a51562d9dbf5d3d31d9": {
     "status": "online",
-    "latency_ms": 1121,
+    "latency_ms": 1494,
     "detail": "200",
-    "checked_at": 1773334414,
+    "checked_at": 1773345128,
     "fail_count": 0
   },
   "692d6a47ba99fbfc67fa947e468e859c7f2b9564": {
     "status": "error",
-    "latency_ms": 1089,
+    "latency_ms": 1113,
     "detail": "HTTP 500",
-    "checked_at": 1773334414,
-    "fail_count": 5
+    "checked_at": 1773344777,
+    "fail_count": 6
   },
   "28205d7c9776b96a1f479c9082e80bd1e18f5afd": {
     "status": "error",
@@ -1576,10 +1576,10 @@
   },
   "b40212c43e96e97542ea00f2129212a054853a57": {
     "status": "error",
-    "latency_ms": 1105,
+    "latency_ms": 1114,
     "detail": "HTTP 500",
-    "checked_at": 1773334414,
-    "fail_count": 2
+    "checked_at": 1773344929,
+    "fail_count": 5
   },
   "a2ed6f2ca3f804481131c41ce64d4286a5820476": {
     "status": "online",
